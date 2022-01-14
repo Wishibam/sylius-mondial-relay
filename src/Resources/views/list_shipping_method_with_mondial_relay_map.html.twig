@@ -1,0 +1,44 @@
+<div class="ui segment">
+    <div class="ui dividing header">{{ 'sylius.ui.shipment'|trans }} #{{ loop.index }}</div>
+    <div class="ui fluid stackable items" {{ sylius_test_html_attribute('shipments') }}>
+        {{ form_errors(form.method) }}
+
+        {% for key, choice_form in form.method %}
+            {% set fee = form.method.vars.shipping_costs[choice_form.vars.value] %}
+            {% set method = form.method.vars.choices[key].data %}
+            {% include '@SyliusShop/Checkout/SelectShipping/_choice.html.twig' with {'form': choice_form, 'method': method, 'fee': fee} %}
+        {% else %}
+            {% include '@SyliusShop/Checkout/SelectShipping/_unavailable.html.twig' %}
+        {% endfor %}
+    </div>
+</div>
+
+{% set key = form.vars.mondial_relay_private_key|default(null) %}
+{% set relayCode = form.vars.mondial_relay_brand_mondial_relay_code|default(null) %}
+{% set placeCode = form.vars.mondial_relay_your_place_code|default(null) %}
+{% if key is not empty and placeCode is not empty and relayCode is not empty %}
+
+    <div id="mondial-relay-map"></div>
+    <input type="text" id="mondial-relay-picked">
+    <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <script type="text/javascript" src="https://widget.mondialrelay.com/parcelshop-picker/jquery.plugin.mondialrelay.parcelshoppicker.min.js"></script>
+    <script>
+
+{#  $("#Zone_Widget").trigger("MR_RebindMap")   redisplay la map#}
+{#  $("#Zone_Widget").trigger("MR_DoSearch",[59510,"FR"]);  recherche manuel pour initialiser #}
+        console.log(':o');
+        $(document).ready(function () {
+            setTimeout(() => {
+                $("#mondial-relay-map").MR_ParcelShopPicker({
+                    Target: "#mondial-relay-picked",
+                    Brand: "{{ relayCode }}",
+                    Country: "FR",
+                    Responsive: true,
+                    OnNoResultReturned: function() {
+                        console.log('no result');
+                    }
+                });
+            }, 1000)
+        });
+    </script>
+{% endif %}

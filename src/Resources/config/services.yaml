@@ -1,0 +1,12 @@
+services:
+    wishibam.mondial_relay.shipping_method_type_extension:
+        class: Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodChoiceTypeExtension
+        public: false
+        arguments:
+            $shippingMethodsResolver: '@sylius.shipping_methods_resolver'
+            $repository: '@sylius.repository.shipping_method'
+            $yourPlaceCode: '%wishibam_mondial_relay.your_place_code%'
+            $brandMondialRelayCode: '%wishibam_mondial_relay.brand_mondial_relay_code%'
+            $privateKey: '%wishibam_mondial_relay.private_key%'
+        tags:
+            - { name: 'form.type_extension' }
