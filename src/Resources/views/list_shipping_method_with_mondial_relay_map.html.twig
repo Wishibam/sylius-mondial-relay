@@ -7,38 +7,73 @@
             {% set fee = form.method.vars.shipping_costs[choice_form.vars.value] %}
             {% set method = form.method.vars.choices[key].data %}
             {% include '@SyliusShop/Checkout/SelectShipping/_choice.html.twig' with {'form': choice_form, 'method': method, 'fee': fee} %}
+
+            {% if choice_form.vars.value == 'mondial_relay' %}
+                <div id="mondial-relay-map" style="display: none"></div>
+            {% endif %}
         {% else %}
             {% include '@SyliusShop/Checkout/SelectShipping/_unavailable.html.twig' %}
         {% endfor %}
     </div>
 </div>
 
-{% set key = form.vars.mondial_relay_private_key|default(null) %}
-{% set relayCode = form.vars.mondial_relay_brand_mondial_relay_code|default(null) %}
-{% set placeCode = form.vars.mondial_relay_your_place_code|default(null) %}
-{% if key is not empty and placeCode is not empty and relayCode is not empty %}
+{% set configuration = form.vars['mondial_relay.configuration'] %}
+{% if configuration is defined %}
+    {% set googleType = constant('Wishibam\\SyliusMondialRelayPlugin\\DependencyInjection\\ParsedConfiguration::MAP_TYPE_GOOGLE') %}
+    {% set privateKey = configuration.privateKey %}
+    {% set relayCode = configuration.mondialRelayCode %}
+    {% set placeCode = configuration.placeCode %}
+    {% set language = configuration.language %}
 
-    <div id="mondial-relay-map"></div>
-    <input type="text" id="mondial-relay-picked">
+    {{ form_widget(form.tracking) }}
     <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
-    <script type="text/javascript" src="https://widget.mondialrelay.com/parcelshop-picker/jquery.plugin.mondialrelay.parcelshoppicker.min.js"></script>
+    <script type="text/javascript" src="https://widget.mondialrelay.com/parcelshop-picker/jquery.plugin.mondialrelay.parcelshoppicker.js"></script>
+    {% if configuration.mapType == googleType %}
+        <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key={{ configuration.googleApiKey }}"></script>
+    {% endif %}
     <script>
 
-{#  $("#Zone_Widget").trigger("MR_RebindMap")   redisplay la map#}
-{#  $("#Zone_Widget").trigger("MR_DoSearch",[59510,"FR"]);  recherche manuel pour initialiser #}
-        console.log(':o');
         $(document).ready(function () {
+            const $map = $('#mondial-relay-map');
+            const $checkboxEls = $('.checkbox').filter(el => {
+                const $radio = $(el).find('#sylius_checkout_select_shipping_shipments');
+
+                return !!$radio;
+            });
+
+            const $submitField = $('#{{ form.tracking.vars.id }}');
+            const displayMap = () => {
+                $map.show();
+                $map.trigger("MR_RebindMap"); // This re-draw the map
+            }
             setTimeout(() => {
-                $("#mondial-relay-map").MR_ParcelShopPicker({
-                    Target: "#mondial-relay-picked",
-                    Brand: "{{ relayCode }}",
-                    Country: "FR",
-                    Responsive: true,
-                    OnNoResultReturned: function() {
-                        console.log('no result');
-                    }
+                const inputChecked =$('form[name="sylius_checkout_select_shipping"] .radio > input').filter((idx, el) => $(el).is(':checked'));
+                if (inputChecked.length === 1 && inputChecked[0].value === 'mondial_relay') {
+                    displayMap();
+                }
+
+                $checkboxEls.checkbox({
+                    onChecked: function() {
+                        if ($(this).val() === "{{ constant('Wishibam\\SyliusMondialRelayPlugin\\DependencyInjection\\ParsedConfiguration::MONDIAL_RELAY_CODE')}}") {
+                            displayMap();
+                        } else {
+                            $submitField.val('');
+                            $map.hide();
+                        }
+                    },
                 });
-            }, 1000)
+
+                $map.MR_ParcelShopPicker({
+                    Target: "#{{ form.tracking.vars.id }}",
+                    Brand: "{{ relayCode }}",
+                    Country: "{{ language }}",
+                    Responsive: {{ configuration.responsive }},
+                    NbResults: {{ configuration.nbMapResults }},
+                    PostCode: "{{ order.shippingAddress.postCode ?: '' }}",
+                    City: "{{ order.shippingAddress.city ?: '' }}",
+                    EnableGmap: {{ configuration.mapType == googleType ? 'true' : 'false' }}
+                });
+            }, 200);
         });
     </script>
 {% endif %}

@@ -4,6 +4,5 @@ wishibam_sylius_mondial_relay:
   private_key: "PrivateK"
   language: "FR"
   responsive: true
-  enableGeolocalisatedSearch: true
   map: ~
 
