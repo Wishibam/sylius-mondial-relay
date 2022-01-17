@@ -1,6 +1,7 @@
 {
     "name": "wishibam/sylius-mondial-relay-plugin",
     "type": "sylius-plugin",
+    "version": "0.0.1",
     "description": "This plugin allow to select a mondial relay shipping point from shipping view while ordering",
     "keywords": [
         "sylius",
@@ -9,7 +10,7 @@
     "license": "MIT",
     "require": {
         "php": "^7.4 || ^8.0",
-        "sylius/sylius": "~1.8.0 || ~1.9.0"
+        "sylius/sylius": "~1.8.0 || ~1.9.0 || ~1.10.0"
     },
     "conflict": {
         "api-platform/core": "^2.6"
