@@ -7,9 +7,8 @@
             {% set fee = form.method.vars.shipping_costs[choice_form.vars.value] %}
             {% set method = form.method.vars.choices[key].data %}
             {% include '@SyliusShop/Checkout/SelectShipping/_choice.html.twig' with {'form': choice_form, 'method': method, 'fee': fee} %}
-
             {% if choice_form.vars.value == 'mondial_relay' %}
-                <div id="mondial-relay-map" style="display: none"></div>
+                <div id="mondial-relay-map" style="display: none;"></div>
             {% endif %}
         {% else %}
             {% include '@SyliusShop/Checkout/SelectShipping/_unavailable.html.twig' %}
@@ -26,7 +25,7 @@
     {% set language = configuration.language %}
 
     {{ form_widget(form.tracking) }}
-    <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
     <script type="text/javascript" src="https://widget.mondialrelay.com/parcelshop-picker/jquery.plugin.mondialrelay.parcelshoppicker.js"></script>
     {% if configuration.mapType == googleType %}
         <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key={{ configuration.googleApiKey }}"></script>
@@ -42,14 +41,38 @@
             });
 
             const $submitField = $('#{{ form.tracking.vars.id }}');
-            const displayMap = () => {
-                $map.show();
-                $map.trigger("MR_RebindMap"); // This re-draw the map
-            }
             setTimeout(() => {
-                const inputChecked =$('form[name="sylius_checkout_select_shipping"] .radio > input').filter((idx, el) => $(el).is(':checked'));
-                if (inputChecked.length === 1 && inputChecked[0].value === 'mondial_relay') {
+                const getInputChecked = () => $('form[name="sylius_checkout_select_shipping"] .radio.checked').filter((idx, el) => $(el).hasClass('checked'));
+                const getTrackingValue = () => $('#{{ form.tracking.vars.id }}').val();
+
+                const isMondialRelaySelected = () => {
+                    const $inputChecked = getInputChecked();
+                    if ($inputChecked.length !== 1) {
+                        return false;
+                    }
+
+                    const $inputHtml = $inputChecked.find('input');
+                    return $inputHtml.length === 1 && $inputHtml[0].value === 'mondial_relay';
+                };
+                const initialInputChecked = getInputChecked();
+
+                const displayMap = () => {
+                    $map.show();
+                    $map.trigger("MR_RebindMap"); // This re-draw the map
+                }
+                const canSubmitShipping = () => {
+                    const $nextPageButton = $('#next-step');
+                    if (!isMondialRelaySelected()) {
+                        $nextPageButton.prop('disabled', false);
+                        return;
+                    }
+
+                    // A mondial relay parcel point must be picked in order to submit shipping selection
+                    $nextPageButton.prop('disabled', !getTrackingValue());
+                };
+                if (initialInputChecked.length === 1 && initialInputChecked[0].value === 'mondial_relay') {
                     displayMap();
+                    canSubmitShipping();
                 }
 
                 $checkboxEls.checkbox({
@@ -60,6 +83,7 @@
                             $submitField.val('');
                             $map.hide();
                         }
+                        canSubmitShipping();
                     },
                 });
 
@@ -71,7 +95,8 @@
                     NbResults: {{ configuration.nbMapResults }},
                     PostCode: "{{ order.shippingAddress.postCode ?: '' }}",
                     City: "{{ order.shippingAddress.city ?: '' }}",
-                    EnableGmap: {{ configuration.mapType == googleType ? 'true' : 'false' }}
+                    EnableGmap: {{ configuration.mapType == googleType ? 'true' : 'false' }},
+                    OnParcelShopSelected: () => canSubmitShipping(),
                 });
             }, 200);
         });

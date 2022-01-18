@@ -1,36 +1,28 @@
-<p align="center">
-    <a href="https://sylius.com" target="_blank">
-        <img src="https://demo.sylius.com/assets/shop/img/logo.png" />
-    </a>
-</p>
+## Explanation
 
-<h1 align="center">Plugin Skeleton</h1>
-
-<p align="center">Skeleton for starting Sylius plugins.</p>
-
-## Documentation
-
-For a comprehensive guide on Sylius Plugins development please go to Sylius documentation,
-there you will find the <a href="https://docs.sylius.com/en/latest/plugin-development-guide/index.html">Plugin Development Guide</a>, that is full of examples.
+#### The goal is to integrate easily this map inside you select shipping workflow ![img_1.png](./doc/pickingDeliveryPoint.png)
 
 ## Quickstart Installation
 
-1. Run `composer create-project sylius/plugin-skeleton ProjectName`.
-
-2. From the plugin skeleton root directory, run the following commands:
-
-    ```bash
-    $ (cd tests/Application && yarn install)
-    $ (cd tests/Application && yarn build)
-    $ (cd tests/Application && APP_ENV=test bin/console assets:install public)
-    
-    $ (cd tests/Application && APP_ENV=test bin/console doctrine:database:create)
-    $ (cd tests/Application && APP_ENV=test bin/console doctrine:schema:create)
-    ```
-
-To be able to setup a plugin's database, remember to configure you database credentials in `tests/Application/.env` and `tests/Application/.env.test`.
+1. Run `composer require wishibam/sylius-mondial-relay-plugin`.
 
 ## Usage
+
+1. create the config file `config/packages/wishibam_sylius_mondial_relay.yaml`. Full [configuration](https://github.com/Wishibam/sylius-mondial-relay/blob/master/tests/Application/config/packages/wishibam_sylius_mondial_relay.yaml) example
+2. Override the sylius template `@SyliusShop/Checkout/SelectShipping/_shipment.html.twig`
+```html
+{% include '@WishibamSyliusMondialRelayPlugin/list_shipping_method_with_mondial_relay_map.html.twig' with {'form': form} %}
+```
+3. Create a new shipping from the admin with `mondial_relay` code.
+
+## Requirements
+
+- You should have [leaflet](https://leafletjs.com/) available inside your javascript. 
+- **Or** you can use the google map (configure `map.type = google` and `map.googleApiKey = 'xxxx'`). The plugin will require the google map automatically for you. Not tested, feel free to open an issue ! 
+
+### Configuration 
+
+Full [configuration](https://github.com/Wishibam/sylius-mondial-relay/blob/master/tests/Application/config/packages/wishibam_sylius_mondial_relay.yaml) example
 
 ### Running plugin tests
 
@@ -110,3 +102,19 @@ To be able to setup a plugin's database, remember to configure you database cred
     (cd tests/Application && APP_ENV=dev bin/console sylius:fixtures:load)
     (cd tests/Application && APP_ENV=dev bin/console server:run -d public)
     ```
+
+
+2. From the root directory, run the following commands:
+
+    ```bash
+    $ (cd tests/Application && yarn install)
+    $ (cd tests/Application && yarn build)
+    $ (cd tests/Application && APP_ENV=test bin/console assets:install public)
+    
+    $ (cd tests/Application && APP_ENV=test bin/console doctrine:database:create)
+    $ (cd tests/Application && APP_ENV=test bin/console doctrine:schema:create)
+    ```
+
+⚠⚠⚠
+To be able to setup a plugin's database, remember to configure you database credentials in `tests/Application/.env` and `tests/Application/.env.test`.
+⚠⚠⚠
