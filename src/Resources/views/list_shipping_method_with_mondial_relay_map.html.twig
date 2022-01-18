@@ -16,8 +16,8 @@
     </div>
 </div>
 
-{% set configuration = form.vars['mondial_relay.configuration'] %}
-{% if configuration is defined %}
+{% if form.vars['mondial_relay.configuration'] is defined %}
+    {% set configuration = form.vars['mondial_relay.configuration'] %}
     {% set googleType = constant('Wishibam\\SyliusMondialRelayPlugin\\DependencyInjection\\ParsedConfiguration::MAP_TYPE_GOOGLE') %}
     {% set privateKey = configuration.privateKey %}
     {% set relayCode = configuration.mondialRelayCode %}
@@ -54,7 +54,6 @@
                     const $inputHtml = $inputChecked.find('input');
                     return $inputHtml.length === 1 && $inputHtml[0].value === 'mondial_relay';
                 };
-                const initialInputChecked = getInputChecked();
 
                 const displayMap = () => {
                     $map.show();
@@ -70,6 +69,8 @@
                     // A mondial relay parcel point must be picked in order to submit shipping selection
                     $nextPageButton.prop('disabled', !getTrackingValue());
                 };
+
+                const initialInputChecked = $('form[name="sylius_checkout_select_shipping"] .radio input:checked');
                 if (initialInputChecked.length === 1 && initialInputChecked[0].value === 'mondial_relay') {
                     displayMap();
                     canSubmitShipping();
