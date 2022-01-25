@@ -26,7 +26,6 @@ class ShipmentNormalizer implements EventSubscriberInterface
             [
                 'event' => 'serializer.post_serialize',
                 'method' => 'onPostSerialize',
-                'class' => Shipment::class,
                 'priority' => 0,
             ],
         ];
@@ -34,6 +33,10 @@ class ShipmentNormalizer implements EventSubscriberInterface
 
     public function onPostSerialize(ObjectEvent $event): void
     {
+        if (!$event->getObject() instanceof Shipment) {
+            return;
+        }
+
         $visitor = $event->getVisitor();
         /** @var Shipment $shipment */
         $shipment = $event->getObject();
