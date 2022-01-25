@@ -30,8 +30,8 @@
     {% if configuration.mapType == googleType %}
         <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key={{ configuration.googleApiKey }}"></script>
     {% endif %}
-    <script>
 
+    <script>
         $(document).ready(function () {
             const $map = $('#mondial-relay-map');
             const $checkboxEls = $('.checkbox').filter(el => {
@@ -76,7 +76,9 @@
                     canSubmitShipping();
                 }
 
+                // This is fire when you click on the dot at left of the shipping method
                 $checkboxEls.checkbox({
+                    fireOnInit: true,
                     onChecked: function() {
                         if ($(this).val() === "{{ constant('Wishibam\\SyliusMondialRelayPlugin\\DependencyInjection\\ParsedConfiguration::MONDIAL_RELAY_CODE')}}") {
                             displayMap();
@@ -88,8 +90,36 @@
                     },
                 });
 
+                // This is fire when you click on the label of the shipping method
+                // Due to semantic ui broken logic this don't fire the "onChecked" previous event
+                $('form[name="sylius_checkout_select_shipping"] .content a.header').click(function() {
+                    const $label = $(this);
+                    const $input = $label.closest('.item').find('input');
+                    const inputId = $input[0].id;
+                    const $items = $('.item .checkbox input');
+                    $items.each((index, item) => {
+                        item = $(item);
+                        if (item[0].id !== inputId) {
+                            item.parent().removeClass('checked');
+                        } else {
+                            item.parent().addClass('checked');
+                        }
+                    });
+
+                    // So there is some boiler code to ensure it also work when clicking on labels ...
+                    if (isMondialRelaySelected()) {
+                        displayMap();
+                    } else {
+                        $input.removeClass('checked');
+                        $submitField.val('');
+                        $map.hide();
+                    }
+
+                    canSubmitShipping();
+                });
+
                 $map.MR_ParcelShopPicker({
-                    Target: "#{{ form.tracking.vars.id }}",
+                    Target: "#{{ form.tracking.vars.id }}", // This will store the selected parcel point into the shipment->tracking field
                     Brand: "{{ relayCode }}",
                     Country: "{{ language }}",
                     Responsive: {{ configuration.responsive }},

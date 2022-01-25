@@ -47,7 +47,7 @@ class ShippingMethodChoiceTypeExtension extends AbstractTypeExtension
         $mondialRelayShippingMethod = null;
         /** @var ShippingMethod $shippingMethod */
         foreach ($shippingMethods as $shippingMethod) {
-            if (false !== strpos($shippingMethod->getCode(), 'mondial_relay')) {
+            if (false !== strpos($shippingMethod->getCode(), ParsedConfiguration::MONDIAL_RELAY_CODE)) {
                 $mondialRelayShippingMethod = $shippingMethod;
             }
         }

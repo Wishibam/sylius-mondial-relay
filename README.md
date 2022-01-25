@@ -1,14 +1,14 @@
 ## Explanation
 
-#### The goal is to integrate easily this map inside you select shipping workflow ![img_1.png](./doc/pickingDeliveryPoint.png)
+#### The goal is to easily integrate this map inside your select shipping workflow ![img_1.png](./doc/pickingDeliveryPoint.png)
 
 ## Quickstart Installation
 
-1. Run `composer require wishibam/sylius-mondial-relay-plugin`.
+1. Run `composer require wishibam/sylius-mondial-relay-plugin`
 
 ## Usage
 
-1. create the config file `config/packages/wishibam_sylius_mondial_relay.yaml`. Full [configuration](https://github.com/Wishibam/sylius-mondial-relay/blob/master/tests/Application/config/packages/wishibam_sylius_mondial_relay.yaml) example
+1. create the config file `config/packages/wishibam_sylius_mondial_relay.yaml`. Full configuration [example here](https://github.com/Wishibam/sylius-mondial-relay/blob/master/tests/Application/config/packages/wishibam_sylius_mondial_relay.yaml) 
 2. Override the sylius template `@SyliusShop/Checkout/SelectShipping/_shipment.html.twig`
 ```html
 {% include '@WishibamSyliusMondialRelayPlugin/list_shipping_method_with_mondial_relay_map.html.twig' with {'form': form} %}
