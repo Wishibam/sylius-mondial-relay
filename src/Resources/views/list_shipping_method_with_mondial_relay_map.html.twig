@@ -13,6 +13,12 @@
         {% else %}
             {% include '@SyliusShop/Checkout/SelectShipping/_unavailable.html.twig' %}
         {% endfor %}
+
+        {{ form_row(form.mondialRelayParcelAddress, {
+            attr: {
+                style: "display:none"
+            }
+        }) }}
     </div>
 </div>
 
@@ -24,7 +30,7 @@
     {% set placeCode = configuration.placeCode %}
     {% set language = configuration.language %}
 
-    {{ form_widget(form.tracking) }}
+    {{ form_widget(form.parcelPoint) }}
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
     <script type="text/javascript" src="https://widget.mondialrelay.com/parcelshop-picker/jquery.plugin.mondialrelay.parcelshoppicker.js"></script>
     {% if configuration.mapType == googleType %}
@@ -39,11 +45,12 @@
 
                 return !!$radio;
             });
+            const shipmentFormName = "{{ form.vars.id }}";
 
-            const $submitField = $('#{{ form.tracking.vars.id }}');
+            const $submitField = $('#{{ form.parcelPoint.vars.id }}');
             setTimeout(() => {
                 const getInputChecked = () => $('form[name="sylius_checkout_select_shipping"] .radio.checked').filter((idx, el) => $(el).hasClass('checked'));
-                const getTrackingValue = () => $('#{{ form.tracking.vars.id }}').val();
+                const getParcelPointValue = () => $('#{{ form.parcelPoint.vars.id }}').val();
 
                 const isMondialRelaySelected = () => {
                     const $inputChecked = getInputChecked();
@@ -67,7 +74,7 @@
                     }
 
                     // A mondial relay parcel point must be picked in order to submit shipping selection
-                    $nextPageButton.prop('disabled', !getTrackingValue());
+                    $nextPageButton.prop('disabled', !getParcelPointValue());
                 };
 
                 const initialInputChecked = $('form[name="sylius_checkout_select_shipping"] .radio input:checked');
@@ -119,7 +126,7 @@
                 });
 
                 $map.MR_ParcelShopPicker({
-                    Target: "#{{ form.tracking.vars.id }}", // This will store the selected parcel point into the shipment->tracking field
+                    Target: "#{{ form.parcelPoint.vars.id }}",
                     Brand: "{{ relayCode }}",
                     Country: "{{ language }}",
                     Responsive: {{ configuration.responsive }},
@@ -127,7 +134,16 @@
                     PostCode: "{{ order.shippingAddress.postCode ?: '' }}",
                     City: "{{ order.shippingAddress.city ?: '' }}",
                     EnableGmap: {{ configuration.mapType == googleType ? 'true' : 'false' }},
-                    OnParcelShopSelected: () => canSubmitShipping(),
+                    OnParcelShopSelected: (pointSelected) => {
+                        const mondialRelayForm = shipmentFormName + '_mondialRelayParcelAddress';
+                        const $addressForm = $('form[name="sylius_checkout_select_shipping"] #'+mondialRelayForm);
+
+                        $addressForm.find(`#${mondialRelayForm}_street`).val(pointSelected.Adresse1);
+                        $addressForm.find(`#${mondialRelayForm}_postcode`).val(pointSelected.CP);
+                        $addressForm.find(`#${mondialRelayForm}_company`).val(pointSelected.Nom);
+                        $addressForm.find(`#${mondialRelayForm}_city`).val(pointSelected.Ville);
+                        canSubmitShipping();
+                    }
                 });
             }, 200);
         });
