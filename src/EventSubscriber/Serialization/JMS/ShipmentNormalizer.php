@@ -10,6 +10,7 @@ use JMS\Serializer\JsonSerializationVisitor;
 use JMS\Serializer\Metadata\StaticPropertyMetadata;
 use Sylius\Component\Core\Model\Shipment;
 use Wishibam\SyliusMondialRelayPlugin\DependencyInjection\ParsedConfiguration;
+use Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodChoiceTypeExtension;
 
 class ShipmentNormalizer implements EventSubscriberInterface
 {
@@ -47,10 +48,23 @@ class ShipmentNormalizer implements EventSubscriberInterface
         if (ParsedConfiguration::MONDIAL_RELAY_CODE !== $shipment->getMethod()->getCode()) {
             return;
         }
+        $shippingAddress = $shipment->getOrder()->getShippingAddress();
+
+        list ($company, $parcelId) = explode(
+            ShippingMethodChoiceTypeExtension::SEPARATOR_PARCEL_NAME_AND_PARCEL_ID,
+            $shippingAddress->getCompany()
+        );
 
         $data = [
-            'mondial_relay_shipping_code' => $this->configuration->getMondialRelayCode(),
-            'mondial_relay_parcel_shop_id' => $shipment->getTracking(),
+            'shipping_code' => $this->configuration->getMondialRelayCode(),
+            'place_code' => $this->configuration->getPlaceCode(),
+            'parcel_point_id' => $parcelId,
+            'parcel' => [
+                'street' => $shippingAddress->getStreet(),
+                'postcode' => $shippingAddress->getPostCode(),
+                'city' => $shippingAddress->getCity(),
+                'company' => $company,
+            ],
         ];
         $visitor->visitProperty(new StaticPropertyMetadata(Shipment::class, 'mondial_relay_data', $data), $data);
     }

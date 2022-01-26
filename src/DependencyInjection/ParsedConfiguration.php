@@ -7,7 +7,7 @@ class ParsedConfiguration
 {
     public const MAP_TYPE_LEAFLET = 'leaflet';
     public const MAP_TYPE_GOOGLE = 'google';
-    public const MONDIAL_RELAY_CODE = 'mondial_relay';
+    public const MONDIAL_RELAY_CODE = 'mondial-relay';
 
     private string $language;
     private string $mondialRelayCode;
