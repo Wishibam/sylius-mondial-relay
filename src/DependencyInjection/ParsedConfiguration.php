@@ -38,11 +38,11 @@ class ParsedConfiguration
         $this->mondialRelayCode = $mondialRelayCode;
         $this->geolocalisedSearch = $map['enableGeolocalisatedSearch'] ?? true;
         $this->mapType = $map['type'] ?? 'leaflet';
-        if (!in_array($this->mapType, [self::MAP_TYPE_GOOGLE, self::MAP_TYPE_LEAFLET])) {
+        if (!in_array($this->mapType, [self::MAP_TYPE_GOOGLE, self::MAP_TYPE_LEAFLET], true)) {
             throw new \LogicException("Type $this->mapType is invalid");
         }
 
-        if ($this->mapType === self::MAP_TYPE_GOOGLE && empty($googleKey)) {
+        if ($this->mapType === self::MAP_TYPE_GOOGLE && (null === $googleKey || '' === trim($googleKey))) {
             throw new \LogicException("Key 'map.googleApiKey' must be configured when using the google map");
         }
         $this->nbMapResults = $map['nbResults'] ?? 7; // 7 is the default value
@@ -54,7 +54,7 @@ class ParsedConfiguration
         return $this->googleApiKey;
     }
 
-    public function getNbMapResults()
+    public function getNbMapResults(): int
     {
         return $this->nbMapResults;
     }
@@ -64,12 +64,12 @@ class ParsedConfiguration
         return $this->language;
     }
 
-    public function getMapType()
+    public function getMapType(): string
     {
         return $this->mapType;
     }
 
-    public function getGeolocalisedSearch()
+    public function getGeolocalisedSearch(): bool
     {
         return $this->geolocalisedSearch;
     }

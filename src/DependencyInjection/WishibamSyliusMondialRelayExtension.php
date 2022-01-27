@@ -29,7 +29,7 @@ final class WishibamSyliusMondialRelayExtension extends Extension
         return new Configuration();
     }
 
-    private function registerConfig(array $configs, ContainerBuilder $container)
+    private function registerConfig(array $configs, ContainerBuilder $container): void
     {
         $config = $this->processConfiguration($this->getConfiguration([], $container), $configs);
         $configurationDefinition = new Definition(ParsedConfiguration::class, [
