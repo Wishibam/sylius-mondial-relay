@@ -38,7 +38,6 @@ class ShipmentNormalizer implements EventSubscriberInterface
             return;
         }
 
-        $visitor = $event->getVisitor();
         /** @var Shipment $shipment */
         $shipment = $event->getObject();
         if (null === $shipment->getMethod()) {
@@ -73,6 +72,7 @@ class ShipmentNormalizer implements EventSubscriberInterface
         ];
 
         /** @var JsonSerializationVisitor $visitor */
+        $visitor = $event->getVisitor();
         $visitor->visitProperty(new StaticPropertyMetadata(Shipment::class, 'mondial_relay_data', $data), $data);
     }
 }

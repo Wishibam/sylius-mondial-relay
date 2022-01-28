@@ -21,7 +21,8 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                php: [7.4, 8.0, 8.1]
+                # Php 8.1 not supported yet by phpstan
+                php: [7.4, 8.0]
                 symfony: [^4.4, ^5.2]
                 sylius: [~1.10.0]
                 node: [10.x]
@@ -166,9 +167,9 @@ jobs:
                 name: Run PHPUnit
                 run: vendor/bin/phpunit --colors=always
 
-            -
-                name: Run Behat
-                run: vendor/bin/behat --colors --strict -vvv --no-interaction || vendor/bin/behat --colors --strict -vvv --no-interaction --rerun
+#            -
+#                name: Run Behat
+#                run: vendor/bin/behat --colors --strict -vvv --no-interaction
 
             -
                 name: Upload Behat logs
