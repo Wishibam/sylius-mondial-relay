@@ -38,7 +38,6 @@ class ShipmentNormalizer implements EventSubscriberInterface
             return;
         }
 
-        $visitor = $event->getVisitor();
         /** @var Shipment $shipment */
         $shipment = $event->getObject();
         if (null === $shipment->getMethod()) {
@@ -48,11 +47,16 @@ class ShipmentNormalizer implements EventSubscriberInterface
         if (ParsedConfiguration::MONDIAL_RELAY_CODE !== $shipment->getMethod()->getCode()) {
             return;
         }
+
+        if (null === $shipment->getOrder() || null === $shipment->getOrder()->getShippingAddress()) {
+            return;
+        }
+
         $shippingAddress = $shipment->getOrder()->getShippingAddress();
 
         list ($company, $parcelId) = explode(
             ShippingMethodChoiceTypeExtension::SEPARATOR_PARCEL_NAME_AND_PARCEL_ID,
-            $shippingAddress->getCompany()
+            \is_string($shippingAddress->getCompany()) ? $shippingAddress->getCompany() : ''
         );
 
         $data = [
@@ -61,11 +65,14 @@ class ShipmentNormalizer implements EventSubscriberInterface
             'parcel_point_id' => $parcelId,
             'parcel' => [
                 'street' => $shippingAddress->getStreet(),
-                'postcode' => $shippingAddress->getPostCode(),
+                'postcode' => $shippingAddress->getPostcode(),
                 'city' => $shippingAddress->getCity(),
                 'company' => $company,
             ],
         ];
+
+        /** @var JsonSerializationVisitor $visitor */
+        $visitor = $event->getVisitor();
         $visitor->visitProperty(new StaticPropertyMetadata(Shipment::class, 'mondial_relay_data', $data), $data);
     }
 }
