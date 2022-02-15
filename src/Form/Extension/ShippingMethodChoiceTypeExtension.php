@@ -37,6 +37,25 @@ class ShippingMethodChoiceTypeExtension extends AbstractTypeExtension
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
+        if (isset($options['subject']) && $this->shippingMethodsResolver->supports($options['subject'])) {
+            $shippingMethods = $this->shippingMethodsResolver->getSupportedMethods($options['subject']);
+        } else {
+            $shippingMethods  = $this->repository->findAll();
+        }
+
+        $found = false;
+        foreach ($shippingMethods as $shippingMethod) {
+            if ($shippingMethod->getCode() === ParsedConfiguration::MONDIAL_RELAY_CODE) {
+                $found = true;
+                break;
+            }
+        }
+
+        // If no mondial relay shipping method configured early exit
+        if (!$found) {
+            return;
+        }
+
         $builder->add('parcelPoint', HiddenType::class, [
             'mapped' => false,
             'label' => false,
