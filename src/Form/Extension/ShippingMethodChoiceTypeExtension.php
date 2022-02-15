@@ -37,22 +37,7 @@ class ShippingMethodChoiceTypeExtension extends AbstractTypeExtension
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
-        if (isset($options['subject']) && $this->shippingMethodsResolver->supports($options['subject'])) {
-            $shippingMethods = $this->shippingMethodsResolver->getSupportedMethods($options['subject']);
-        } else {
-            $shippingMethods  = $this->repository->findAll();
-        }
-
-        $found = false;
-        foreach ($shippingMethods as $shippingMethod) {
-            if ($shippingMethod->getCode() === ParsedConfiguration::MONDIAL_RELAY_CODE) {
-                $found = true;
-                break;
-            }
-        }
-
-        // If no mondial relay shipping method configured early exit
-        if (!$found) {
+        if (null === $this->getMondialRelayShippingMethod($options)) {
             return;
         }
 
@@ -75,26 +60,7 @@ class ShippingMethodChoiceTypeExtension extends AbstractTypeExtension
 
     public function buildView(FormView $view, FormInterface $form, array $options): void
     {
-        if (isset($options['subject']) && $this->shippingMethodsResolver->supports($options['subject'])) {
-            $shippingMethods = $this->shippingMethodsResolver->getSupportedMethods($options['subject']);
-        } else {
-            $shippingMethods  = $this->repository->findAll();
-        }
-
-        $mondialRelayShippingMethod = null;
-        /** @var ShippingMethod $shippingMethod */
-        foreach ($shippingMethods as $shippingMethod) {
-            if (null === $shippingMethod->getCode()) {
-                continue;
-            }
-
-            if (false !== strpos($shippingMethod->getCode(), ParsedConfiguration::MONDIAL_RELAY_CODE)) {
-                $mondialRelayShippingMethod = $shippingMethod;
-                break;
-            }
-        }
-
-        if (null === $mondialRelayShippingMethod) {
+        if (null === $this->getMondialRelayShippingMethod($options)) {
             return;
         }
 
@@ -104,5 +70,27 @@ class ShippingMethodChoiceTypeExtension extends AbstractTypeExtension
     public static function getExtendedTypes(): iterable
     {
         return [ShipmentType::class];
+    }
+
+    private function getMondialRelayShippingMethod(array $options): ?ShippingMethod
+    {
+        if (isset($options['subject']) && $this->shippingMethodsResolver->supports($options['subject'])) {
+            $shippingMethods = $this->shippingMethodsResolver->getSupportedMethods($options['subject']);
+        } else {
+            $shippingMethods  = $this->repository->findAll();
+        }
+
+        /** @var ShippingMethod $shippingMethod */
+        foreach ($shippingMethods as $shippingMethod) {
+            if (null === $shippingMethod->getCode() || !$shippingMethod->isEnabled()) {
+                continue;
+            }
+
+            if (false !== strpos($shippingMethod->getCode(), ParsedConfiguration::MONDIAL_RELAY_CODE)) {
+                return $shippingMethod;
+            }
+        }
+
+        return null;
     }
 }
