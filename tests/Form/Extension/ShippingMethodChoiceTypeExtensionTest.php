@@ -40,6 +40,11 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
     public function testItRegisterSubscriber()
     {
         $model = new Shipment();
+        $shippingMethod = $this->prophesize(ShippingMethod::class);
+        $shippingMethod->getCode()->willReturn(ParsedConfiguration::MONDIAL_RELAY_CODE);
+        $shippingMethod->getName()->willReturn('some name');
+        $shippingMethod->isEnabled()->willReturn(true);
+        $this->repository->findAll()->willReturn([$shippingMethod->reveal()]);
         $form = $this->factory->create(ShipmentType::class, $model);
         $postSubmitEvents = $form->getConfig()->getEventDispatcher()->getListeners('form.post_submit');
         $this->assertNotEmpty($postSubmitEvents);
@@ -53,9 +58,40 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
         throw new \LogicException('No listener SetMondialRelayParcelPointOnShippingAddressSubscriber registered ');
     }
 
+    public function testItDontAddMondialRelayFieldsIfNotConfigured()
+    {
+        $model = new Shipment();
+        $this->repository->findAll()->willReturn([]);
+
+        $form = $this->factory->create(ShipmentType::class, $model);
+        $formNames = array_keys(iterator_to_array($form));
+        foreach ($formNames as $formName) {
+            $this->assertStringStartsNotWith('mondialRelay', $formName);
+        }
+    }
+
+    public function testItAddMondialRelayFieldsIfConfigured()
+    {
+        $model = new Shipment();
+        $shippingMethod = $this->prophesize(ShippingMethod::class);
+        $shippingMethod->getCode()->willReturn(ParsedConfiguration::MONDIAL_RELAY_CODE);
+        $shippingMethod->getName()->willReturn('some name');
+        $shippingMethod->isEnabled()->willReturn(true);
+        $this->repository->findAll()->willReturn([$shippingMethod->reveal()]);
+
+        $form = $this->factory->create(ShipmentType::class, $model);
+        $formNames = iterator_to_array($form);
+        $this->assertArrayHasKey('mondialRelayParcelAddress', $formNames);
+    }
+
     public function testItAddMondialRelayFieldsToForm()
     {
         $model = new Shipment();
+        $shippingMethod = $this->prophesize(ShippingMethod::class);
+        $shippingMethod->getCode()->willReturn(ParsedConfiguration::MONDIAL_RELAY_CODE);
+        $shippingMethod->getName()->willReturn('some name');
+        $shippingMethod->isEnabled()->willReturn(true);
+        $this->repository->findAll()->willReturn([$shippingMethod->reveal()]);
         $form = $this->factory->create(ShipmentType::class, $model);
 
         $this->assertTrue($form->has('parcelPoint'));
@@ -74,6 +110,7 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
         $shippingMethod->getCode()->willReturn(ParsedConfiguration::MONDIAL_RELAY_CODE);
         $shippingMethod->getCalculator()->willReturn('flat_rate');
         $shippingMethod->getConfiguration()->willReturn(['amount' => 12]);
+        $shippingMethod->isEnabled()->willReturn(true);
         $shippingMethod->getName()->willReturn('swaggy delivery');
         $this->repository->findAll()->willReturn([$shippingMethod->reveal()]);
 
