@@ -14,11 +14,13 @@
             {% include '@SyliusShop/Checkout/SelectShipping/_unavailable.html.twig' %}
         {% endfor %}
 
-        {{ form_row(form.mondialRelayParcelAddress, {
-            attr: {
-                style: "display:none"
-            }
-        }) }}
+        {% if form.vars['mondial_relay.configuration'] is defined %}
+            {{ form_row(form.mondialRelayParcelAddress, {
+                attr: {
+                    style: "display:none"
+                }
+            }) }}
+        {% endif %}
     </div>
 </div>
 
