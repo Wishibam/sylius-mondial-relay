@@ -37,6 +37,7 @@ final class WishibamSyliusMondialRelayExtension extends Extension
             $config['private_key'],
             $config['your_place_code'],
             $config['brand_mondial_relay_code'],
+            $config['shipping_code'],
             $config['map'],
             $config['responsive']
         ]);

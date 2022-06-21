@@ -1,6 +1,7 @@
 wishibam_sylius_mondial_relay:
   your_place_code: "11"
   brand_mondial_relay_code: "BDTEST13"
+  shipping_code: "24R"
   private_key: "PrivateK"
   language: "FR"
   responsive: true

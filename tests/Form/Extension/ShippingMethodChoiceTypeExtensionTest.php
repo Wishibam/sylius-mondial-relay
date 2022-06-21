@@ -141,6 +141,7 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
             'private_key',
             'placeCode',
             'mondial1234',
+            '24R',
             ['type' => 'leaflet'],
             true
         );

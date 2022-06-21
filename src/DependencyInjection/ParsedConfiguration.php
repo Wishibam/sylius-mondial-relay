@@ -14,6 +14,7 @@ class ParsedConfiguration
     private string $privateKey;
     private string $placeCode;
     private string $mapType;
+    private string $shippingCode;
 
     private ?string $googleApiKey;
 
@@ -26,6 +27,7 @@ class ParsedConfiguration
         string $privateKey,
         string $placeCode,
         string $mondialRelayCode,
+        string $shippingCode,
         array $map,
         bool $responsive = true,
         string $googleKey = null
@@ -36,6 +38,7 @@ class ParsedConfiguration
         $this->placeCode = $placeCode;
         $this->responsive = $responsive;
         $this->mondialRelayCode = $mondialRelayCode;
+        $this->shippingCode = $shippingCode;
         $this->geolocalisedSearch = $map['enableGeolocalisatedSearch'] ?? true;
         $this->mapType = $map['type'] ?? 'leaflet';
         if (!in_array($this->mapType, [self::MAP_TYPE_GOOGLE, self::MAP_TYPE_LEAFLET], true)) {
@@ -79,6 +82,10 @@ class ParsedConfiguration
         return $this->mondialRelayCode;
     }
 
+    public function getShippingCode(): string
+    {
+        return $this->shippingCode;
+    }
     public function getPrivateKey(): string
     {
         return $this->privateKey;
