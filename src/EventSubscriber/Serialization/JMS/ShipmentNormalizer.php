@@ -60,7 +60,7 @@ class ShipmentNormalizer implements EventSubscriberInterface
         );
 
         $data = [
-            'shipping_code' => $this->configuration->getMondialRelayCode(),
+            'shipping_code' => $this->configuration->getShippingCode(),
             'place_code' => $this->configuration->getPlaceCode(),
             'parcel_point_id' => $parcelId,
             'parcel' => [

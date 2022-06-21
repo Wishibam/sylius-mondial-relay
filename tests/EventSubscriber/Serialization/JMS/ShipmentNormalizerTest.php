@@ -151,6 +151,7 @@ class ShipmentNormalizerTest extends TestCase
         $order->getShippingAddress()->willReturn($address);
         $this->configuration->getMondialRelayCode()->willReturn('12');
         $this->configuration->getPlaceCode()->willReturn('B1');
+        $this->configuration->getShippingCode()->willReturn('24R');
         $shipment->getOrder()->willReturn($order->reveal());
         $objectEvent->getObject()->willReturn($shipment->reveal());
 
@@ -162,7 +163,7 @@ class ShipmentNormalizerTest extends TestCase
         $this->assertArrayHasKey('mondial_relay_data', $data);
         $data = $data['mondial_relay_data'];
         $this->assertEquals([
-            'shipping_code' => '12',
+            'shipping_code' => '24R',
             'place_code' => 'B1',
             'parcel_point_id' => 'P-123141',
             'parcel' => [
