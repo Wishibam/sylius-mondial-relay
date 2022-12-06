@@ -13,7 +13,7 @@
 ```html
 {% include '@WishibamSyliusMondialRelayPlugin/list_shipping_method_with_mondial_relay_map.html.twig' with {'form': form} %}
 ```
-3. Create a new shipping from the admin with `mondial_relay` code.
+3. Create a new shipping from the admin with `mondial-relay` code.
 
 ## Requirements
 
