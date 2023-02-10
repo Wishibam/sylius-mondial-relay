@@ -54,20 +54,20 @@ class ShipmentNormalizer implements EventSubscriberInterface
 
         $shippingAddress = $shipment->getOrder()->getShippingAddress();
 
-        list ($company, $parcelId) = explode(
+        list ($parcelId, $company) = explode(
             ShippingMethodChoiceTypeExtension::SEPARATOR_PARCEL_NAME_AND_PARCEL_ID,
-            \is_string($shippingAddress->getCompany()) ? $shippingAddress->getCompany() : ''
+            \is_string($shippingAddress->getCompany()) ? strrev($shippingAddress->getCompany()) : ''
         );
 
         $data = [
             'shipping_code' => $this->configuration->getShippingCode(),
             'place_code' => $this->configuration->getPlaceCode(),
-            'parcel_point_id' => $parcelId,
+            'parcel_point_id' => $parcelId ? strrev($parcelId) : $parcelId,
             'parcel' => [
                 'street' => $shippingAddress->getStreet(),
                 'postcode' => $shippingAddress->getPostcode(),
                 'city' => $shippingAddress->getCity(),
-                'company' => $company,
+                'company' => $company ? strrev($company) : $company,
             ],
         ];
 
