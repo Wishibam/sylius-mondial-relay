@@ -173,6 +173,33 @@ class ShipmentNormalizerTest extends TestCase
                 'company' => 'Wishi shoes store',
             ],
         ], $data);
+
+        $address->setCompany('Wishi shoes store----P-123141');
+        $order->getShippingAddress()->willReturn($address);
+        $this->configuration->getMondialRelayCode()->willReturn('12');
+        $this->configuration->getPlaceCode()->willReturn('B1');
+        $this->configuration->getShippingCode()->willReturn('24R');
+        $shipment->getOrder()->willReturn($order->reveal());
+        $objectEvent->getObject()->willReturn($shipment->reveal());
+
+        $this->subject->onPostSerialize($objectEvent->reveal());
+
+        $data = Reflection::getPrivateProperty($this->visitor, 'data');
+        $this->assertNotNull($data);
+        $this->assertIsArray($data);
+        $this->assertArrayHasKey('mondial_relay_data', $data);
+        $data = $data['mondial_relay_data'];
+        $this->assertEquals([
+            'shipping_code' => '24R',
+            'place_code' => 'B1',
+            'parcel_point_id' => 'P-123141',
+            'parcel' => [
+                'street' => '42 rue des fleurs',
+                'postcode' => '12345',
+                'city' => 'Wishiland',
+                'company' => 'Wishi shoes store-',
+            ],
+        ], $data);
     }
 
     public function notAShipmentDataProvider()
