@@ -6,6 +6,7 @@ services:
             $shippingMethodsResolver: '@sylius.shipping_methods_resolver'
             $repository: '@sylius.repository.shipping_method'
             $configuration: '@wishibam_mondial_relay.parsed_configuration'
+            $session: '@session'
         tags:
             - { name: 'form.type_extension' }
 
