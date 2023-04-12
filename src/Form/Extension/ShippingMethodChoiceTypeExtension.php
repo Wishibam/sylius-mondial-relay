@@ -13,6 +13,7 @@ use Symfony\Component\Form\Extension\Core\Type\HiddenType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Wishibam\SyliusMondialRelayPlugin\DependencyInjection\ParsedConfiguration;
 use Wishibam\SyliusMondialRelayPlugin\Form\EventSubscriber\SetMondialRelayParcelPointOnShippingAddressSubscriber;
 
@@ -23,16 +24,19 @@ class ShippingMethodChoiceTypeExtension extends AbstractTypeExtension
     private ShippingMethodsResolverInterface $shippingMethodsResolver;
     private ParsedConfiguration $configuration;
     private RepositoryInterface $repository;
+    private SessionInterface $session;
 
     public function __construct(
         ShippingMethodsResolverInterface $shippingMethodsResolver,
         RepositoryInterface $repository,
-        ParsedConfiguration $configuration
+        ParsedConfiguration $configuration,
+        SessionInterface $session
     )
     {
         $this->shippingMethodsResolver = $shippingMethodsResolver;
         $this->repository = $repository;
         $this->configuration = $configuration;
+        $this->session = $session;
     }
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
@@ -55,7 +59,7 @@ class ShippingMethodChoiceTypeExtension extends AbstractTypeExtension
         $builder->get('mondialRelayParcelAddress')->remove('firstName');
         $builder->get('mondialRelayParcelAddress')->remove('lastName');
 
-        $builder->addEventSubscriber(new SetMondialRelayParcelPointOnShippingAddressSubscriber());
+        $builder->addEventSubscriber(new SetMondialRelayParcelPointOnShippingAddressSubscriber($this->session));
     }
 
     public function buildView(FormView $view, FormInterface $form, array $options): void
