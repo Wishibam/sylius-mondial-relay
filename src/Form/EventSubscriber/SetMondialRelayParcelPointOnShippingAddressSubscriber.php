@@ -14,8 +14,11 @@ use Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodChoiceTypeExt
 
 class SetMondialRelayParcelPointOnShippingAddressSubscriber implements EventSubscriberInterface
 {
-    public function __construct(private SessionInterface $session)
+    public const SESSION_ID = 'mondialRelayPreviousAddress';
+    private SessionInterface $session;
+    public function __construct(SessionInterface $session)
     {
+        $this->session = $session;
     }
     public static function getSubscribedEvents()
     {
@@ -56,7 +59,7 @@ class SetMondialRelayParcelPointOnShippingAddressSubscriber implements EventSubs
 
     private function saveAddressData(Address $address)
     {
-        $this->session->set('mondialRelayPreviousAddress', [
+        $this->session->set(self::SESSION_ID, [
             'postCode' => $address->getPostcode(),
             'street' => $address->getStreet(),
             'city' => $address->getCity(),
@@ -67,7 +70,7 @@ class SetMondialRelayParcelPointOnShippingAddressSubscriber implements EventSubs
     private function resetAddress(Address $address)
     {
         /** @var null|array{postCode: ?string, street: ?string, city: ?string, company: ?string} $previousAddress */
-        $previousAddress = $this->session->get('mondialRelayPreviousAddress');
+        $previousAddress = $this->session->get(self::SESSION_ID);
 
         if (null === $previousAddress) {
             return;

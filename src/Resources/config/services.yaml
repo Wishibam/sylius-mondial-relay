@@ -10,6 +10,14 @@ services:
         tags:
             - { name: 'form.type_extension' }
 
+    wishibam.mondial_relay.form.forget_previous_address:
+        class: Wishibam\SyliusMondialRelayPlugin\Form\Extension\AddressTypeExtension
+        public: false
+        arguments:
+            $session: '@session'
+        tags:
+            - { name: 'form.type_extension' }
+
     wishibam.mondial_relay.serialization.shipment:
         class: Wishibam\SyliusMondialRelayPlugin\EventSubscriber\Serialization\JMS\ShipmentNormalizer
         arguments:

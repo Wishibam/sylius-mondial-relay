@@ -20,6 +20,7 @@ use Sylius\Component\Shipping\Model\ShippingMethod;
 use Sylius\Component\Shipping\Resolver\ShippingMethodsResolverInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Form\Test\TypeTestCase;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Wishibam\SyliusMondialRelayPlugin\DependencyInjection\ParsedConfiguration;
 use Wishibam\SyliusMondialRelayPlugin\Form\EventSubscriber\SetMondialRelayParcelPointOnShippingAddressSubscriber;
 use Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodChoiceTypeExtension;
@@ -145,7 +146,12 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
             ['type' => 'leaflet'],
             true
         );
-        $subject = new ShippingMethodChoiceTypeExtension($this->shippingMethodResolver->reveal(), $this->repository->reveal(), $this->configuration);
+        $subject = new ShippingMethodChoiceTypeExtension(
+            $this->shippingMethodResolver->reveal(),
+            $this->repository->reveal(),
+            $this->configuration,
+            $this->prophesize(SessionInterface::class)->reveal()
+        );
 
         return [
             $subject,
