@@ -3,22 +3,28 @@ declare(strict_types=1);
 
 namespace Wishibam\SyliusMondialRelayPlugin\Form\EventSubscriber;
 
-use Sylius\Component\Addressing\Model\Address;
+use Sylius\Component\Core\Model\Address;
 use Sylius\Component\Core\Model\ShipmentInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Wishibam\SyliusMondialRelayPlugin\DependencyInjection\ParsedConfiguration;
+use Wishibam\SyliusMondialRelayPlugin\Event\ResetAddressToPreviousAddress;
+use Wishibam\SyliusMondialRelayPlugin\Event\SetMondialRelayInAddress;
 use Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodChoiceTypeExtension;
 
 class SetMondialRelayParcelPointOnShippingAddressSubscriber implements EventSubscriberInterface
 {
     public const SESSION_ID = 'mondialRelayPreviousAddress';
     private SessionInterface $session;
-    public function __construct(SessionInterface $session)
+    private EventDispatcherInterface $dispatcher;
+
+    public function __construct(SessionInterface $session, EventDispatcherInterface $dispatcher)
     {
         $this->session = $session;
+        $this->dispatcher = $dispatcher;
     }
     public static function getSubscribedEvents()
     {
@@ -41,13 +47,22 @@ class SetMondialRelayParcelPointOnShippingAddressSubscriber implements EventSubs
             null === $shipment->getOrder() ||
             ParsedConfiguration::MONDIAL_RELAY_CODE !== $shipment->getMethod()->getCode()
         ) {
-            $this->resetAddress($originalShippingAddress);
+            /** @var null|array{postCode: ?string, street: ?string, city: ?string, company: ?string} $previousAddressData */
+            $previousAddressData = $this->session->get(self::SESSION_ID);
+
+            if ($previousAddressData !== null) {
+                $this->dispatcher->dispatch(new ResetAddressToPreviousAddress($originalShippingAddress, $previousAddressData));
+                $this->resetAddress($originalShippingAddress, $previousAddressData);
+            }
+
             return;
         }
 
         /** @var Address $mondialRelayPointAddress */
         $mondialRelayPointAddress = $form->get('mondialRelayParcelAddress')->getData();
-        $this->saveAddressData($originalShippingAddress);
+
+        $this->dispatcher->dispatch($event = new SetMondialRelayInAddress($originalShippingAddress));
+        $this->saveAddressData($originalShippingAddress, $event->getPreviousAddressData());
 
         // Replace the original shipping address info by the mondial relay parcel point info
         $originalShippingAddress->setPostcode($mondialRelayPointAddress->getPostcode());
@@ -57,29 +72,25 @@ class SetMondialRelayParcelPointOnShippingAddressSubscriber implements EventSubs
         $originalShippingAddress->setCompany($mondialRelayPointAddress->getCompany() . ShippingMethodChoiceTypeExtension::SEPARATOR_PARCEL_NAME_AND_PARCEL_ID.$form->get('parcelPoint')->getData());
     }
 
-    private function saveAddressData(Address $address)
+    private function saveAddressData(Address $address, array $data): void
     {
-        $this->session->set(self::SESSION_ID, [
-            'postCode' => $address->getPostcode(),
-            'street' => $address->getStreet(),
-            'city' => $address->getCity(),
-            'company' => $address->getCompany()
-        ]);
+        $data['postCode'] = $address->getPostcode();
+        $data['street'] = $address->getStreet();
+        $data['city'] = $address->getCity();
+        $data['company'] = $address->getCompany();
+
+        $this->session->set(self::SESSION_ID, $data);
     }
 
-    private function resetAddress(Address $address)
+    /**
+     * @param array{postCode: ?string, street: ?string, city: ?string, company: ?string} $previousAddress
+     */
+    private function resetAddress(Address $address, array $previousAddress): void
     {
-        /** @var null|array{postCode: ?string, street: ?string, city: ?string, company: ?string} $previousAddress */
-        $previousAddress = $this->session->get(self::SESSION_ID);
-
-        if (null === $previousAddress) {
-            return;
-        }
-
-        $address->setCity($previousAddress['city']);
-        $address->setPostcode($previousAddress['postCode']);
-        $address->setCompany($previousAddress['company']);
-        $address->setStreet($previousAddress['street']);
+        $address->setCity($previousAddress['city'] ?? null);
+        $address->setPostcode($previousAddress['postCode'] ?? null);
+        $address->setCompany($previousAddress['company'] ?? null);
+        $address->setStreet($previousAddress['street'] ?? null);
 
         $this->session->set('mondialRelayPreviousAddress', null);
     }

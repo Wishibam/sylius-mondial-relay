@@ -14,6 +14,7 @@ use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Wishibam\SyliusMondialRelayPlugin\DependencyInjection\ParsedConfiguration;
 use Wishibam\SyliusMondialRelayPlugin\Form\EventSubscriber\SetMondialRelayParcelPointOnShippingAddressSubscriber;
 
@@ -23,20 +24,31 @@ class ShippingMethodChoiceTypeExtension extends AbstractTypeExtension
 
     private ShippingMethodsResolverInterface $shippingMethodsResolver;
     private ParsedConfiguration $configuration;
+
+    /**
+     * @var RepositoryInterface<ShippingMethod>
+     */
     private RepositoryInterface $repository;
     private SessionInterface $session;
 
+    private EventDispatcherInterface $dispatcher;
+
+    /**
+     * @param RepositoryInterface<ShippingMethod> $repository
+     */
     public function __construct(
         ShippingMethodsResolverInterface $shippingMethodsResolver,
         RepositoryInterface $repository,
         ParsedConfiguration $configuration,
-        SessionInterface $session
+        SessionInterface $session,
+        EventDispatcherInterface $dispatcher
     )
     {
         $this->shippingMethodsResolver = $shippingMethodsResolver;
         $this->repository = $repository;
         $this->configuration = $configuration;
         $this->session = $session;
+        $this->dispatcher = $dispatcher;
     }
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
@@ -59,7 +71,7 @@ class ShippingMethodChoiceTypeExtension extends AbstractTypeExtension
         $builder->get('mondialRelayParcelAddress')->remove('firstName');
         $builder->get('mondialRelayParcelAddress')->remove('lastName');
 
-        $builder->addEventSubscriber(new SetMondialRelayParcelPointOnShippingAddressSubscriber($this->session));
+        $builder->addEventSubscriber(new SetMondialRelayParcelPointOnShippingAddressSubscriber($this->session, $this->dispatcher));
     }
 
     public function buildView(FormView $view, FormInterface $form, array $options): void
