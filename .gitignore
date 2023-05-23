@@ -11,3 +11,4 @@ node_modules
 /behat.yml
 /phpspec.yml
 /phpunit.xml
+.php_cs.cache
