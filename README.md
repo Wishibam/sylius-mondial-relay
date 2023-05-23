@@ -8,12 +8,14 @@
 
 ## Usage
 
-1. create the config file `config/packages/wishibam_sylius_mondial_relay.yaml`. Full configuration [example here](https://github.com/Wishibam/sylius-mondial-relay/blob/master/tests/Application/config/packages/wishibam_sylius_mondial_relay.yaml) 
+1. Create the config file `config/packages/wishibam_sylius_mondial_relay.yaml`. Full configuration [example here](https://github.com/Wishibam/sylius-mondial-relay/blob/master/tests/Application/config/packages/wishibam_sylius_mondial_relay.yaml)
 2. Override the sylius template `@SyliusShop/Checkout/SelectShipping/_shipment.html.twig`
 ```html
 {% include '@WishibamSyliusMondialRelayPlugin/list_shipping_method_with_mondial_relay_map.html.twig' with {'form': form} %}
 ```
-3. Create a new shipping from the admin with `mondial-relay` code.
+3. Create a new shipping method in admin, and select a configuration (leave it blank if not Mondial Relay):
+
+![configuration](./doc/configuration.png)
 
 ## Requirements
 

@@ -1,13 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace Wishibam\SyliusMondialRelayPlugin\DependencyInjection;
+namespace Wishibam\SyliusMondialRelayPlugin\Configuration;
 
 class ParsedConfiguration
 {
     public const MAP_TYPE_LEAFLET = 'leaflet';
     public const MAP_TYPE_GOOGLE = 'google';
-    public const MONDIAL_RELAY_CODE = 'mondial-relay';
 
     private string $language;
     private string $mondialRelayCode;
@@ -15,12 +14,10 @@ class ParsedConfiguration
     private string $placeCode;
     private string $mapType;
     private string $shippingCode;
-
-    private ?string $googleApiKey;
-
     private int $nbMapResults;
     private bool $responsive;
     private bool $geolocalisedSearch;
+    private ?string $googleApiKey;
 
     public function __construct(
         string $language,
@@ -31,8 +28,7 @@ class ParsedConfiguration
         array $map,
         bool $responsive = true,
         string $googleKey = null
-    )
-    {
+    ) {
         $this->language = strtoupper($language);
         $this->privateKey = $privateKey;
         $this->placeCode = $placeCode;
@@ -41,6 +37,7 @@ class ParsedConfiguration
         $this->shippingCode = $shippingCode;
         $this->geolocalisedSearch = $map['enableGeolocalisatedSearch'] ?? true;
         $this->mapType = $map['type'] ?? 'leaflet';
+
         if (!in_array($this->mapType, [self::MAP_TYPE_GOOGLE, self::MAP_TYPE_LEAFLET], true)) {
             throw new \LogicException("Type $this->mapType is invalid");
         }
@@ -48,6 +45,7 @@ class ParsedConfiguration
         if ($this->mapType === self::MAP_TYPE_GOOGLE && (null === $googleKey || '' === trim($googleKey))) {
             throw new \LogicException("Key 'map.googleApiKey' must be configured when using the google map");
         }
+
         $this->nbMapResults = $map['nbResults'] ?? 7; // 7 is the default value
         $this->googleApiKey = $googleKey;
     }
@@ -67,9 +65,9 @@ class ParsedConfiguration
         return $this->language;
     }
 
-    public function getMapType(): string
+    public function isGoogleType(): bool
     {
-        return $this->mapType;
+        return self::MAP_TYPE_GOOGLE === $this->mapType;
     }
 
     public function getGeolocalisedSearch(): bool
@@ -86,6 +84,7 @@ class ParsedConfiguration
     {
         return $this->shippingCode;
     }
+
     public function getPrivateKey(): string
     {
         return $this->privateKey;
