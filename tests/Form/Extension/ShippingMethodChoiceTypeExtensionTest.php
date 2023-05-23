@@ -5,6 +5,7 @@ namespace Tests\Wishibam\SyliusMondialRelayPlugin\Form\Extension;
 
 use Prophecy\Argument;
 use Prophecy\PhpUnit\ProphecyTrait;
+use Prophecy\Prophecy\ObjectProphecy;
 use Sylius\Bundle\AddressingBundle\Form\Type\AddressType;
 use Sylius\Bundle\CoreBundle\Form\Type\Checkout\ShipmentType;
 use Sylius\Bundle\ShippingBundle\Form\Type\ShippingMethodChoiceType;
@@ -18,10 +19,13 @@ use Sylius\Component\Shipping\Calculator\CalculatorInterface;
 use Sylius\Component\Shipping\Calculator\FlatRateCalculator;
 use Sylius\Component\Shipping\Model\ShippingMethod;
 use Sylius\Component\Shipping\Resolver\ShippingMethodsResolverInterface;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Form\Test\TypeTestCase;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Wishibam\SyliusMondialRelayPlugin\DependencyInjection\ParsedConfiguration;
+use Wishibam\SyliusMondialRelayPlugin\Event\ResetAddressToPreviousAddress;
+use Wishibam\SyliusMondialRelayPlugin\Event\SetMondialRelayInAddress;
 use Wishibam\SyliusMondialRelayPlugin\Form\EventSubscriber\SetMondialRelayParcelPointOnShippingAddressSubscriber;
 use Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodChoiceTypeExtension;
 
@@ -37,6 +41,18 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
 
     /** @var ShippingMethodsResolverInterface */
     private $shippingMethodResolver;
+
+    private $customDispatcher;
+
+    /** @var SessionInterface|ObjectProphecy */
+    private $session;
+
+    protected function setUp(): void
+    {
+        $this->customDispatcher = new EventDispatcher();
+        parent::setUp();
+    }
+
 
     public function testItRegisterSubscriber()
     {
@@ -132,10 +148,111 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
         $this->assertArrayNotHasKey('mondial_relay.configuration', $view->vars);
     }
 
+    public function testICanExtendTheAddressAndClearDataWithAnEvent()
+    {
+        $address = new class() extends Address {
+            private ?string $more = 'something';
+
+            public function getMore(): ?string
+            {
+                return $this->more;
+            }
+
+            public function setMore(?string $more): void
+            {
+                $this->more = $more;
+            }
+        };
+        $this->customDispatcher->addListener(SetMondialRelayInAddress::class, function (SetMondialRelayInAddress $event) {
+            $address = $event->getAddress();
+
+            $data = $event->getPreviousAddressData();
+            $data['more'] = $address->getMore();
+            $address->setMore(null);
+            $event->setPreviousAddressData($data);
+        });
+
+        $order = new Order();
+        $order->setShippingAddress($address);
+        $model = new Shipment();
+        $model->setOrder($order);
+        $shippingMethod = $this->prophesize(ShippingMethod::class);
+        $shippingMethod->getCode()->willReturn(ParsedConfiguration::MONDIAL_RELAY_CODE);
+        $shippingMethod->getName()->willReturn('some name');
+        $shippingMethod->isEnabled()->willReturn(true);
+        $this->repository->findAll()->willReturn([$shippingMethod->reveal()]);
+        $form = $this->factory->create(ShipmentType::class, $model);
+
+
+        $form->submit(
+            [
+                'method' => 'mondial-relay',
+                'mondialRelayParcelAddress' => [
+                    'street' => '419 Rue saint honoré',
+                    'city' => 'Paris',
+                    'postcode' => '75001',
+                ],
+                'parcelPoint' => '12345'
+            ]
+        );
+
+        $this->assertNull($address->getMore());
+    }
+    public function testICanExtendTheAddressAndReSetThePreviousAddress()
+    {
+        $address = new class() extends Address {
+            private ?string $more = 'something';
+
+            public function getMore(): ?string
+            {
+                return $this->more;
+            }
+
+            public function setMore(?string $more): void
+            {
+                $this->more = $more;
+            }
+        };
+        $this->customDispatcher->addListener(ResetAddressToPreviousAddress::class, function (ResetAddressToPreviousAddress $event) {
+            $data = $event->getPreviousAddressData();
+            $address = $event->getAddress();
+            $address->setMore($data['more']);
+        });
+
+        $order = new Order();
+        $order->setShippingAddress($address);
+        $model = new Shipment();
+        $model->setOrder($order);
+        $mondialRelay = $this->prophesize(ShippingMethod::class);
+        $mondialRelay->getCode()->willReturn(ParsedConfiguration::MONDIAL_RELAY_CODE);
+        $mondialRelay->getName()->willReturn('some name');
+        $mondialRelay->isEnabled()->willReturn(true);
+        $somethingElse = $this->prophesize(ShippingMethod::class);
+        $somethingElse->getCode()->willReturn('something_else');
+        $somethingElse->getName()->willReturn('some name');
+        $somethingElse->isEnabled()->willReturn(true);
+        $this->repository->findAll()->willReturn([$somethingElse->reveal(), $mondialRelay->reveal()]);
+        $this->session->get(SetMondialRelayParcelPointOnShippingAddressSubscriber::SESSION_ID)->willReturn([
+            'more' => 'Something special',
+        ]);
+        $this->session->set(SetMondialRelayParcelPointOnShippingAddressSubscriber::SESSION_ID, null)->shouldBeCalled();
+        $form = $this->factory->create(ShipmentType::class, $model);
+
+
+        $form->submit(
+            [
+                'method' => 'something_else',
+            ]
+        );
+
+        $this->assertEquals('Something special', $address->getMore());
+    }
+
     protected function getTypeExtensions()
     {
         $this->shippingMethodResolver = $this->prophesize(ShippingMethodsResolverInterface::class);
         $this->repository = $this->prophesize(RepositoryInterface::class);
+        $this->session = $this->prophesize(SessionInterface::class);
 
         $this->configuration = new ParsedConfiguration(
             'FR',
@@ -150,7 +267,8 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
             $this->shippingMethodResolver->reveal(),
             $this->repository->reveal(),
             $this->configuration,
-            $this->prophesize(SessionInterface::class)->reveal()
+            $this->session->reveal(),
+            $this->customDispatcher
         );
 
         return [
