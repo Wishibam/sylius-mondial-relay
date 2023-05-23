@@ -9,16 +9,19 @@ use JMS\Serializer\EventDispatcher\ObjectEvent;
 use JMS\Serializer\JsonSerializationVisitor;
 use JMS\Serializer\Metadata\StaticPropertyMetadata;
 use Sylius\Component\Core\Model\Shipment;
-use Wishibam\SyliusMondialRelayPlugin\DependencyInjection\ParsedConfiguration;
+use Sylius\Component\Core\Model\ShippingMethodInterface;
+use Wishibam\SyliusMondialRelayPlugin\Configuration\ConfigurationResolver;
+use Wishibam\SyliusMondialRelayPlugin\Configuration\ParsedConfiguration;
 use Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodChoiceTypeExtension;
+use Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodTypeExtension;
 
 class ShipmentNormalizer implements EventSubscriberInterface
 {
-    private ParsedConfiguration $configuration;
+    private ConfigurationResolver $configurationResolver;
 
-    public function __construct(ParsedConfiguration $configuration)
+    public function __construct(ConfigurationResolver $configurationResolver)
     {
-        $this->configuration = $configuration;
+        $this->configurationResolver = $configurationResolver;
     }
 
     public static function getSubscribedEvents(): array
@@ -38,15 +41,18 @@ class ShipmentNormalizer implements EventSubscriberInterface
             return;
         }
 
-        /** @var Shipment $shipment */
         $shipment = $event->getObject();
-        if (null === $shipment->getMethod()) {
+        $shippingMethod = $shipment->getMethod();
+
+        if (!$shippingMethod instanceof ShippingMethodInterface) {
             return;
         }
 
-        if (ParsedConfiguration::MONDIAL_RELAY_CODE !== $shipment->getMethod()->getCode()) {
+        if (!isset($shippingMethod->getConfiguration()[ShippingMethodTypeExtension::CONFIGURATION_KEY])) {
             return;
         }
+
+        $configuration = $this->configurationResolver->getConfiguration($shippingMethod->getConfiguration()[ShippingMethodTypeExtension::CONFIGURATION_KEY]);
 
         if (null === $shipment->getOrder() || null === $shipment->getOrder()->getShippingAddress()) {
             return;
@@ -54,14 +60,14 @@ class ShipmentNormalizer implements EventSubscriberInterface
 
         $shippingAddress = $shipment->getOrder()->getShippingAddress();
 
-        list ($parcelId, $company) = explode(
+        [$parcelId, $company] = explode(
             ShippingMethodChoiceTypeExtension::SEPARATOR_PARCEL_NAME_AND_PARCEL_ID,
             \is_string($shippingAddress->getCompany()) ? strrev($shippingAddress->getCompany()) : ''
         );
 
         $data = [
-            'shipping_code' => $this->configuration->getShippingCode(),
-            'place_code' => $this->configuration->getPlaceCode(),
+            'shipping_code' => $configuration->getShippingCode(),
+            'place_code' => $configuration->getPlaceCode(),
             'parcel_point_id' => $parcelId ? strrev($parcelId) : $parcelId,
             'parcel' => [
                 'street' => $shippingAddress->getStreet(),

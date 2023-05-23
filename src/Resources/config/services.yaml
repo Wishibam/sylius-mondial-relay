@@ -3,9 +3,6 @@ services:
         class: Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodChoiceTypeExtension
         public: false
         arguments:
-            $shippingMethodsResolver: '@sylius.shipping_methods_resolver'
-            $repository: '@sylius.repository.shipping_method'
-            $configuration: '@wishibam_mondial_relay.parsed_configuration'
             $session: '@session'
             $dispatcher: '@event_dispatcher'
         tags:
@@ -22,6 +19,21 @@ services:
     wishibam.mondial_relay.serialization.shipment:
         class: Wishibam\SyliusMondialRelayPlugin\EventSubscriber\Serialization\JMS\ShipmentNormalizer
         arguments:
-            $configuration: '@wishibam_mondial_relay.parsed_configuration'
+            $configurationResolver: '@wishibam_mondial_relay.configuration_resolver'
         tags:
             - { name: 'jms_serializer.event_subscriber' }
+
+    wishibam.mondial_relay.form.extension.shipping_method:
+        arguments:
+            $configurationResolver: '@wishibam_mondial_relay.configuration_resolver'
+        class: Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodTypeExtension
+        tags:
+            - name: form.type_extension
+              extended_type: Sylius\Bundle\ShippingBundle\Form\Type\ShippingMethodType
+
+    wishibam.mondial_relay.twig_extension:
+        arguments:
+            $configurationResolver: '@wishibam_mondial_relay.configuration_resolver'
+        class: Wishibam\SyliusMondialRelayPlugin\Twig\MondialRelayExtension
+        tags:
+            - { name: twig.extension }

@@ -10,12 +10,13 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
 class ForgetPreviousAddressOnAddressFormValidationSubscriber implements EventSubscriberInterface
 {
     private SessionInterface $session;
+
     public function __construct(SessionInterface $session)
     {
         $this->session = $session;
     }
 
-    public static function getSubscribedEvents()
+    public static function getSubscribedEvents(): array
     {
         return [
             FormEvents::POST_SUBMIT => 'forgetPreviousAddress',

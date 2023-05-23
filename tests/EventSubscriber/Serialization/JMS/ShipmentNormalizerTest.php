@@ -21,15 +21,14 @@ use Sylius\Component\Core\Model\Shipment;
 use Sylius\Component\Core\Model\ShippingMethod;
 use Sylius\Component\Order\Model\OrderItem;
 use Tests\Wishibam\SyliusMondialRelayPlugin\Utils\Reflection;
-use Wishibam\SyliusMondialRelayPlugin\DependencyInjection\ParsedConfiguration;
+use Wishibam\SyliusMondialRelayPlugin\Configuration\ConfigurationResolver;
+use Wishibam\SyliusMondialRelayPlugin\Configuration\ParsedConfiguration;
 use Wishibam\SyliusMondialRelayPlugin\EventSubscriber\Serialization\JMS\ShipmentNormalizer;
+use Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodTypeExtension;
 
 class ShipmentNormalizerTest extends TestCase
 {
     use ProphecyTrait;
-
-    /** @var ObjectProphecy|ParsedConfiguration  */
-    private $configuration;
 
     /** @var ObjectProphecy|JsonSerializationVisitor */
     private $visitor;
@@ -37,11 +36,15 @@ class ShipmentNormalizerTest extends TestCase
     /** @var ShipmentNormalizer */
     private $subject;
 
+    /** @var ObjectProphecy|ConfigurationResolver */
+    private $configurationResolver;
+
     protected function setUp(): void
     {
-        $this->configuration = $this->prophesize(ParsedConfiguration::class);
+        $this->configurationResolver = $this->prophesize(ConfigurationResolver::class);
+
         $this->visitor = new JsonSerializationVisitor();
-        $this->subject = new ShipmentNormalizer($this->configuration->reveal());
+        $this->subject = new ShipmentNormalizer($this->configurationResolver->reveal());
 
         $driver = $this->prophesize(DriverInterface::class);
         $metadataFactory = new MetadataFactory($driver->reveal());
@@ -90,7 +93,7 @@ class ShipmentNormalizerTest extends TestCase
         $objectEvent = $this->prophesize(ObjectEvent::class);
         $shipment = $this->prophesize(Shipment::class);
         $shippingMethod = $this->prophesize(ShippingMethod::class);
-        $shippingMethod->getCode()->willReturn('not-mondial-relay');
+        $shippingMethod->getConfiguration()->willReturn([]);
         $shipment->getMethod()->willReturn($shippingMethod->reveal());
         $objectEvent->getObject()->willReturn($shipment->reveal());
 
@@ -105,7 +108,7 @@ class ShipmentNormalizerTest extends TestCase
         $objectEvent = $this->prophesize(ObjectEvent::class);
         $shipment = $this->prophesize(Shipment::class);
         $shippingMethod = $this->prophesize(ShippingMethod::class);
-        $shippingMethod->getCode()->willReturn(ParsedConfiguration::MONDIAL_RELAY_CODE);
+        $shippingMethod->getConfiguration()->willReturn([ShippingMethodTypeExtension::CONFIGURATION_KEY => 'mr_config_1']);
         $shipment->getMethod()->willReturn($shippingMethod->reveal());
         $shipment->getOrder()->willReturn(null);
         $objectEvent->getObject()->willReturn($shipment->reveal());
@@ -121,7 +124,7 @@ class ShipmentNormalizerTest extends TestCase
         $objectEvent = $this->prophesize(ObjectEvent::class);
         $shipment = $this->prophesize(Shipment::class);
         $shippingMethod = $this->prophesize(ShippingMethod::class);
-        $shippingMethod->getCode()->willReturn(ParsedConfiguration::MONDIAL_RELAY_CODE);
+        $shippingMethod->getConfiguration()->willReturn([ShippingMethodTypeExtension::CONFIGURATION_KEY => 'mr_config_1']);
         $shipment->getMethod()->willReturn($shippingMethod->reveal());
         $order = $this->prophesize(OrderInterface::class);
         $order->getShippingAddress()->willReturn(null);
@@ -136,11 +139,16 @@ class ShipmentNormalizerTest extends TestCase
 
     public function testMondialRelayShipmentHaveAdditionnalDataAddedToSerialization()
     {
+        $parsedConfiguration = $this->prophesize(ParsedConfiguration::class);
+
+        $this->configurationResolver->getConfiguration('mr_config_1')->willReturn($parsedConfiguration);
+
         $objectEvent = $this->prophesize(ObjectEvent::class);
         $objectEvent->getVisitor()->willReturn($this->visitor);
         $shipment = $this->prophesize(Shipment::class);
         $shippingMethod = $this->prophesize(ShippingMethod::class);
-        $shippingMethod->getCode()->willReturn(ParsedConfiguration::MONDIAL_RELAY_CODE);
+        $shippingMethod->getConfiguration()->willReturn([ShippingMethodTypeExtension::CONFIGURATION_KEY => 'mr_config_1']);
+
         $shipment->getMethod()->willReturn($shippingMethod->reveal());
         $order = $this->prophesize(OrderInterface::class);
         $address = new Address();
@@ -149,9 +157,9 @@ class ShipmentNormalizerTest extends TestCase
         $address->setCity('Wishiland');
         $address->setCompany('Wishi shoes store---P-123141');
         $order->getShippingAddress()->willReturn($address);
-        $this->configuration->getMondialRelayCode()->willReturn('12');
-        $this->configuration->getPlaceCode()->willReturn('B1');
-        $this->configuration->getShippingCode()->willReturn('24R');
+        $parsedConfiguration->getMondialRelayCode()->willReturn('12');
+        $parsedConfiguration->getPlaceCode()->willReturn('B1');
+        $parsedConfiguration->getShippingCode()->willReturn('24R');
         $shipment->getOrder()->willReturn($order->reveal());
         $objectEvent->getObject()->willReturn($shipment->reveal());
 
@@ -176,9 +184,9 @@ class ShipmentNormalizerTest extends TestCase
 
         $address->setCompany('Wishi shoes store----P-123141');
         $order->getShippingAddress()->willReturn($address);
-        $this->configuration->getMondialRelayCode()->willReturn('12');
-        $this->configuration->getPlaceCode()->willReturn('B1');
-        $this->configuration->getShippingCode()->willReturn('24R');
+        $parsedConfiguration->getMondialRelayCode()->willReturn('12');
+        $parsedConfiguration->getPlaceCode()->willReturn('B1');
+        $parsedConfiguration->getShippingCode()->willReturn('24R');
         $shipment->getOrder()->willReturn($order->reveal());
         $objectEvent->getObject()->willReturn($shipment->reveal());
 

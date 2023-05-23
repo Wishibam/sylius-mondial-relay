@@ -10,14 +10,15 @@ use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
-use Wishibam\SyliusMondialRelayPlugin\DependencyInjection\ParsedConfiguration;
 use Wishibam\SyliusMondialRelayPlugin\Event\ResetAddressToPreviousAddress;
 use Wishibam\SyliusMondialRelayPlugin\Event\SetMondialRelayInAddress;
 use Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodChoiceTypeExtension;
+use Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodTypeExtension;
 
 class SetMondialRelayParcelPointOnShippingAddressSubscriber implements EventSubscriberInterface
 {
     public const SESSION_ID = 'mondialRelayPreviousAddress';
+
     private SessionInterface $session;
     private EventDispatcherInterface $dispatcher;
 
@@ -26,7 +27,8 @@ class SetMondialRelayParcelPointOnShippingAddressSubscriber implements EventSubs
         $this->session = $session;
         $this->dispatcher = $dispatcher;
     }
-    public static function getSubscribedEvents()
+
+    public static function getSubscribedEvents(): array
     {
         return [
             FormEvents::POST_SUBMIT => 'setMondialRelayPointInsideOrderShippingAddress',
@@ -45,13 +47,14 @@ class SetMondialRelayParcelPointOnShippingAddressSubscriber implements EventSubs
             !$shipment instanceof ShipmentInterface ||
             null === $shipment->getMethod() ||
             null === $shipment->getOrder() ||
-            ParsedConfiguration::MONDIAL_RELAY_CODE !== $shipment->getMethod()->getCode()
+            !isset($shipment->getMethod()->getConfiguration()[ShippingMethodTypeExtension::CONFIGURATION_KEY])
         ) {
             /** @var null|array{postCode: ?string, street: ?string, city: ?string, company: ?string} $previousAddressData */
             $previousAddressData = $this->session->get(self::SESSION_ID);
 
             if ($previousAddressData !== null) {
                 $this->dispatcher->dispatch(new ResetAddressToPreviousAddress($originalShippingAddress, $previousAddressData));
+
                 $this->resetAddress($originalShippingAddress, $previousAddressData);
             }
 
@@ -61,15 +64,16 @@ class SetMondialRelayParcelPointOnShippingAddressSubscriber implements EventSubs
         /** @var Address $mondialRelayPointAddress */
         $mondialRelayPointAddress = $form->get('mondialRelayParcelAddress')->getData();
 
-        $this->dispatcher->dispatch($event = new SetMondialRelayInAddress($originalShippingAddress));
-        $this->saveAddressData($originalShippingAddress, $event->getPreviousAddressData());
+        $this->dispatcher->dispatch($setMondialRelayInAddressEvent = new SetMondialRelayInAddress($originalShippingAddress));
+
+        $this->saveAddressData($originalShippingAddress, $setMondialRelayInAddressEvent->getPreviousAddressData());
 
         // Replace the original shipping address info by the mondial relay parcel point info
         $originalShippingAddress->setPostcode($mondialRelayPointAddress->getPostcode());
         $originalShippingAddress->setStreet($mondialRelayPointAddress->getStreet());
         $originalShippingAddress->setCity($mondialRelayPointAddress->getCity());
         // Example "Amazing shop name---FR-008046"
-        $originalShippingAddress->setCompany($mondialRelayPointAddress->getCompany() . ShippingMethodChoiceTypeExtension::SEPARATOR_PARCEL_NAME_AND_PARCEL_ID.$form->get('parcelPoint')->getData());
+        $originalShippingAddress->setCompany($mondialRelayPointAddress->getCompany() . ShippingMethodChoiceTypeExtension::SEPARATOR_PARCEL_NAME_AND_PARCEL_ID . $form->get('parcelPoint')->getData());
     }
 
     private function saveAddressData(Address $address, array $data): void

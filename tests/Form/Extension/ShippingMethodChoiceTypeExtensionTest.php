@@ -23,18 +23,15 @@ use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Form\Test\TypeTestCase;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
-use Wishibam\SyliusMondialRelayPlugin\DependencyInjection\ParsedConfiguration;
 use Wishibam\SyliusMondialRelayPlugin\Event\ResetAddressToPreviousAddress;
 use Wishibam\SyliusMondialRelayPlugin\Event\SetMondialRelayInAddress;
 use Wishibam\SyliusMondialRelayPlugin\Form\EventSubscriber\SetMondialRelayParcelPointOnShippingAddressSubscriber;
 use Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodChoiceTypeExtension;
+use Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodTypeExtension;
 
 class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
 {
     use ProphecyTrait;
-
-    /** @var ParsedConfiguration */
-    private $configuration;
 
     /** @var RepositoryInterface */
     private $repository;
@@ -50,18 +47,17 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
     protected function setUp(): void
     {
         $this->customDispatcher = new EventDispatcher();
+
         parent::setUp();
     }
-
 
     public function testItRegisterSubscriber()
     {
         $model = new Shipment();
         $shippingMethod = $this->prophesize(ShippingMethod::class);
-        $shippingMethod->getCode()->willReturn(ParsedConfiguration::MONDIAL_RELAY_CODE);
         $shippingMethod->getName()->willReturn('some name');
         $shippingMethod->isEnabled()->willReturn(true);
-        $this->repository->findAll()->willReturn([$shippingMethod->reveal()]);
+
         $form = $this->factory->create(ShipmentType::class, $model);
         $postSubmitEvents = $form->getConfig()->getEventDispatcher()->getListeners('form.post_submit');
         $this->assertNotEmpty($postSubmitEvents);
@@ -75,25 +71,10 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
         throw new \LogicException('No listener SetMondialRelayParcelPointOnShippingAddressSubscriber registered ');
     }
 
-    public function testItDontAddMondialRelayFieldsIfNotConfigured()
-    {
-        $model = new Shipment();
-        $this->repository->findAll()->willReturn([]);
-
-        $form = $this->factory->create(ShipmentType::class, $model);
-        $formNames = array_keys(iterator_to_array($form));
-        foreach ($formNames as $formName) {
-            $this->assertStringStartsNotWith('mondialRelay', $formName);
-        }
-    }
-
     public function testItAddMondialRelayFieldsIfConfigured()
     {
         $model = new Shipment();
         $shippingMethod = $this->prophesize(ShippingMethod::class);
-        $shippingMethod->getCode()->willReturn(ParsedConfiguration::MONDIAL_RELAY_CODE);
-        $shippingMethod->getName()->willReturn('some name');
-        $shippingMethod->isEnabled()->willReturn(true);
         $this->repository->findAll()->willReturn([$shippingMethod->reveal()]);
 
         $form = $this->factory->create(ShipmentType::class, $model);
@@ -105,9 +86,6 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
     {
         $model = new Shipment();
         $shippingMethod = $this->prophesize(ShippingMethod::class);
-        $shippingMethod->getCode()->willReturn(ParsedConfiguration::MONDIAL_RELAY_CODE);
-        $shippingMethod->getName()->willReturn('some name');
-        $shippingMethod->isEnabled()->willReturn(true);
         $this->repository->findAll()->willReturn([$shippingMethod->reveal()]);
         $form = $this->factory->create(ShipmentType::class, $model);
 
@@ -118,34 +96,6 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
         $this->assertFalse($form->get('mondialRelayParcelAddress')->has('countryCode'));
         $this->assertFalse($form->get('mondialRelayParcelAddress')->has('firstName'));
         $this->assertFalse($form->get('mondialRelayParcelAddress')->has('lastName'));
-    }
-
-    public function testItRegisterConfigurationOnFormViewIfMondialRelayShippingMethodIsAvailable()
-    {
-        $model = new Shipment();
-        $shippingMethod = $this->prophesize(ShippingMethod::class);
-        $shippingMethod->getCode()->willReturn(ParsedConfiguration::MONDIAL_RELAY_CODE);
-        $shippingMethod->getCalculator()->willReturn('flat_rate');
-        $shippingMethod->getConfiguration()->willReturn(['amount' => 12]);
-        $shippingMethod->isEnabled()->willReturn(true);
-        $shippingMethod->getName()->willReturn('swaggy delivery');
-        $this->repository->findAll()->willReturn([$shippingMethod->reveal()]);
-
-        $form = $this->factory->create(ShipmentType::class, $model);
-        $view = $form->createView();
-        $this->assertArrayHasKey('mondial_relay.configuration', $view->vars);
-        $config = $view->vars['mondial_relay.configuration'];
-        $this->assertEquals($this->configuration, $config);
-    }
-
-    public function testItDontRegisterConfigurationIfNoMondialRelayShippingMethodIsAvailable()
-    {
-        $model = new Shipment();
-        $this->repository->findAll()->willReturn([]);
-
-        $form = $this->factory->create(ShipmentType::class, $model);
-        $view = $form->createView();
-        $this->assertArrayNotHasKey('mondial_relay.configuration', $view->vars);
     }
 
     public function testICanExtendTheAddressAndClearDataWithAnEvent()
@@ -163,6 +113,7 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
                 $this->more = $more;
             }
         };
+
         $this->customDispatcher->addListener(SetMondialRelayInAddress::class, function (SetMondialRelayInAddress $event) {
             $address = $event->getAddress();
 
@@ -177,12 +128,12 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
         $model = new Shipment();
         $model->setOrder($order);
         $shippingMethod = $this->prophesize(ShippingMethod::class);
-        $shippingMethod->getCode()->willReturn(ParsedConfiguration::MONDIAL_RELAY_CODE);
+        $shippingMethod->getConfiguration()->willReturn([ShippingMethodTypeExtension::CONFIGURATION_KEY => 'mr1']);
+        $shippingMethod->getCode()->willReturn('mondial-relay');
         $shippingMethod->getName()->willReturn('some name');
         $shippingMethod->isEnabled()->willReturn(true);
         $this->repository->findAll()->willReturn([$shippingMethod->reveal()]);
         $form = $this->factory->create(ShipmentType::class, $model);
-
 
         $form->submit(
             [
@@ -198,6 +149,7 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
 
         $this->assertNull($address->getMore());
     }
+
     public function testICanExtendTheAddressAndReSetThePreviousAddress()
     {
         $address = new class() extends Address {
@@ -224,10 +176,8 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
         $model = new Shipment();
         $model->setOrder($order);
         $mondialRelay = $this->prophesize(ShippingMethod::class);
-        $mondialRelay->getCode()->willReturn(ParsedConfiguration::MONDIAL_RELAY_CODE);
-        $mondialRelay->getName()->willReturn('some name');
-        $mondialRelay->isEnabled()->willReturn(true);
         $somethingElse = $this->prophesize(ShippingMethod::class);
+        $somethingElse->getConfiguration()->willReturn([]);
         $somethingElse->getCode()->willReturn('something_else');
         $somethingElse->getName()->willReturn('some name');
         $somethingElse->isEnabled()->willReturn(true);
@@ -254,19 +204,7 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
         $this->repository = $this->prophesize(RepositoryInterface::class);
         $this->session = $this->prophesize(SessionInterface::class);
 
-        $this->configuration = new ParsedConfiguration(
-            'FR',
-            'private_key',
-            'placeCode',
-            'mondial1234',
-            '24R',
-            ['type' => 'leaflet'],
-            true
-        );
         $subject = new ShippingMethodChoiceTypeExtension(
-            $this->shippingMethodResolver->reveal(),
-            $this->repository->reveal(),
-            $this->configuration,
             $this->session->reveal(),
             $this->customDispatcher
         );
@@ -288,6 +226,7 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
         $calculators = new ServiceRegistry(CalculatorInterface::class);
         $calculators->register('flat_rate', new FlatRateCalculator());
         $this->shippingMethodResolver->supports(Argument::any())->willReturn(false);
+
         $shippingMethodChoiceType = new ShippingMethodChoiceType(
             $this->shippingMethodResolver->reveal(),
             $calculators,

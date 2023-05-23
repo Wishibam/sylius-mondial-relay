@@ -1,0 +1,4 @@
+wishibam_mondial_relay:
+    form:
+        shipping_method:
+            mondial_relay_configuration: 'Configuration Mondial Relay'
