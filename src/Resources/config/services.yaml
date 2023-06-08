@@ -3,6 +3,8 @@ services:
         class: Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodChoiceTypeExtension
         public: false
         arguments:
+            $shippingMethodsResolver: '@sylius.shipping_methods_resolver'
+            $repository: '@sylius.repository.shipping_method'
             $session: '@session'
             $dispatcher: '@event_dispatcher'
         tags:
