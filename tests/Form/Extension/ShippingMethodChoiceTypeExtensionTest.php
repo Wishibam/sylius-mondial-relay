@@ -17,7 +17,7 @@ use Sylius\Component\Registry\ServiceRegistry;
 use Sylius\Component\Resource\Repository\RepositoryInterface;
 use Sylius\Component\Shipping\Calculator\CalculatorInterface;
 use Sylius\Component\Shipping\Calculator\FlatRateCalculator;
-use Sylius\Component\Shipping\Model\ShippingMethod;
+use Sylius\Component\Core\Model\ShippingMethod;
 use Sylius\Component\Shipping\Resolver\ShippingMethodsResolverInterface;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -56,7 +56,11 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
         $model = new Shipment();
         $shippingMethod = $this->prophesize(ShippingMethod::class);
         $shippingMethod->getName()->willReturn('some name');
+        $shippingMethod->getCode()->willReturn('something');
         $shippingMethod->isEnabled()->willReturn(true);
+        $shippingMethod->getConfiguration()->willReturn([ShippingMethodTypeExtension::CONFIGURATION_KEY => 'mr1']);
+
+        $this->repository->findAll()->willReturn([$shippingMethod->reveal()]);
 
         $form = $this->factory->create(ShipmentType::class, $model);
         $postSubmitEvents = $form->getConfig()->getEventDispatcher()->getListeners('form.post_submit');
@@ -75,6 +79,10 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
     {
         $model = new Shipment();
         $shippingMethod = $this->prophesize(ShippingMethod::class);
+        $shippingMethod->getName()->willReturn('some name');
+        $shippingMethod->getCode()->willReturn('something');
+        $shippingMethod->isEnabled()->willReturn(true);
+        $shippingMethod->getConfiguration()->willReturn([ShippingMethodTypeExtension::CONFIGURATION_KEY => 'mr1']);
         $this->repository->findAll()->willReturn([$shippingMethod->reveal()]);
 
         $form = $this->factory->create(ShipmentType::class, $model);
@@ -86,6 +94,10 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
     {
         $model = new Shipment();
         $shippingMethod = $this->prophesize(ShippingMethod::class);
+        $shippingMethod->getCode()->willReturn('Mondial relay');
+        $shippingMethod->getName()->willReturn('Mondial relay');
+        $shippingMethod->isEnabled()->willReturn(true);
+        $shippingMethod->getConfiguration()->willReturn([ShippingMethodTypeExtension::CONFIGURATION_KEY => 'mr1']);
         $this->repository->findAll()->willReturn([$shippingMethod->reveal()]);
         $form = $this->factory->create(ShipmentType::class, $model);
 
@@ -176,6 +188,12 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
         $model = new Shipment();
         $model->setOrder($order);
         $mondialRelay = $this->prophesize(ShippingMethod::class);
+        $mondialRelay->getConfiguration()->willReturn([
+            ShippingMethodTypeExtension::CONFIGURATION_KEY => 'default'
+        ]);
+        $mondialRelay->getCode()->willReturn('some mondial relay code');
+        $mondialRelay->isEnabled()->willReturn(true);
+        $mondialRelay->getName()->willReturn('Mondial relay');
         $somethingElse = $this->prophesize(ShippingMethod::class);
         $somethingElse->getConfiguration()->willReturn([]);
         $somethingElse->getCode()->willReturn('something_else');
@@ -205,6 +223,8 @@ class ShippingMethodChoiceTypeExtensionTest extends TypeTestCase
         $this->session = $this->prophesize(SessionInterface::class);
 
         $subject = new ShippingMethodChoiceTypeExtension(
+            $this->shippingMethodResolver->reveal(),
+            $this->repository->reveal(),
             $this->session->reveal(),
             $this->customDispatcher
         );

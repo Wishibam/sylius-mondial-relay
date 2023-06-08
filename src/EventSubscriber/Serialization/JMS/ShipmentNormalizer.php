@@ -52,11 +52,11 @@ class ShipmentNormalizer implements EventSubscriberInterface
             return;
         }
 
-        $configuration = $this->configurationResolver->getConfiguration($shippingMethod->getConfiguration()[ShippingMethodTypeExtension::CONFIGURATION_KEY]);
-
         if (null === $shipment->getOrder() || null === $shipment->getOrder()->getShippingAddress()) {
             return;
         }
+
+        $configuration = $this->configurationResolver->getConfiguration($shippingMethod->getConfiguration()[ShippingMethodTypeExtension::CONFIGURATION_KEY]);
 
         $shippingAddress = $shipment->getOrder()->getShippingAddress();
 

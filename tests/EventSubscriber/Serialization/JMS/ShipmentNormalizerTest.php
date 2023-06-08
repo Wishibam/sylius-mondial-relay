@@ -124,7 +124,7 @@ class ShipmentNormalizerTest extends TestCase
         $objectEvent = $this->prophesize(ObjectEvent::class);
         $shipment = $this->prophesize(Shipment::class);
         $shippingMethod = $this->prophesize(ShippingMethod::class);
-        $shippingMethod->getConfiguration()->willReturn([ShippingMethodTypeExtension::CONFIGURATION_KEY => 'mr_config_1']);
+        $shippingMethod->getConfiguration()->willReturn([]);
         $shipment->getMethod()->willReturn($shippingMethod->reveal());
         $order = $this->prophesize(OrderInterface::class);
         $order->getShippingAddress()->willReturn(null);
