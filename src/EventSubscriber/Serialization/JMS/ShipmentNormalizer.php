@@ -8,20 +8,22 @@ use JMS\Serializer\EventDispatcher\EventSubscriberInterface;
 use JMS\Serializer\EventDispatcher\ObjectEvent;
 use JMS\Serializer\JsonSerializationVisitor;
 use JMS\Serializer\Metadata\StaticPropertyMetadata;
+use Psr\Log\LoggerInterface;
 use Sylius\Component\Core\Model\Shipment;
 use Sylius\Component\Core\Model\ShippingMethodInterface;
 use Wishibam\SyliusMondialRelayPlugin\Configuration\ConfigurationResolver;
-use Wishibam\SyliusMondialRelayPlugin\Configuration\ParsedConfiguration;
 use Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodChoiceTypeExtension;
 use Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodTypeExtension;
 
 class ShipmentNormalizer implements EventSubscriberInterface
 {
     private ConfigurationResolver $configurationResolver;
+    private LoggerInterface $logger;
 
-    public function __construct(ConfigurationResolver $configurationResolver)
+    public function __construct(ConfigurationResolver $configurationResolver, LoggerInterface $logger)
     {
         $this->configurationResolver = $configurationResolver;
+        $this->logger = $logger;
     }
 
     public static function getSubscribedEvents(): array
@@ -60,10 +62,16 @@ class ShipmentNormalizer implements EventSubscriberInterface
 
         $shippingAddress = $shipment->getOrder()->getShippingAddress();
 
-        [$parcelId, $company] = explode(
-            ShippingMethodChoiceTypeExtension::SEPARATOR_PARCEL_NAME_AND_PARCEL_ID,
-            \is_string($shippingAddress->getCompany()) ? strrev($shippingAddress->getCompany()) : ''
-        );
+        try {
+            [$parcelId, $company] = explode(
+                ShippingMethodChoiceTypeExtension::SEPARATOR_PARCEL_NAME_AND_PARCEL_ID,
+                \is_string($shippingAddress->getCompany()) ? strrev($shippingAddress->getCompany()) : ''
+            );
+        } catch (\Exception $exception) {
+            $this->logger->error(sprintf('[MondialRelayPlugin] Unable to parse pickup point for Order "%d": %s', $shipment->getOrder()->getId(), $shippingAddress->getCompany()));
+
+            return;
+        }
 
         $data = [
             'shipping_code' => $configuration->getShippingCode(),
