@@ -22,6 +22,7 @@ services:
         class: Wishibam\SyliusMondialRelayPlugin\EventSubscriber\Serialization\JMS\ShipmentNormalizer
         arguments:
             $configurationResolver: '@wishibam_mondial_relay.configuration_resolver'
+            $logger: '@logger'
         tags:
             - { name: 'jms_serializer.event_subscriber' }
 
