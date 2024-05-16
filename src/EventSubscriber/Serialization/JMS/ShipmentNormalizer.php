@@ -62,16 +62,19 @@ class ShipmentNormalizer implements EventSubscriberInterface
 
         $shippingAddress = $shipment->getOrder()->getShippingAddress();
 
-        try {
-            [$parcelId, $company] = explode(
-                ShippingMethodChoiceTypeExtension::SEPARATOR_PARCEL_NAME_AND_PARCEL_ID,
-                \is_string($shippingAddress->getCompany()) ? strrev($shippingAddress->getCompany()) : ''
-            );
-        } catch (\Exception $exception) {
+        $pickupPointData = explode(
+            ShippingMethodChoiceTypeExtension::SEPARATOR_PARCEL_NAME_AND_PARCEL_ID,
+            \is_string($shippingAddress->getCompany()) ? strrev($shippingAddress->getCompany()) : ''
+        );
+
+        if (count($pickupPointData) < 2) {
             $this->logger->error(sprintf('[MondialRelayPlugin] Unable to parse pickup point for Order "%d": %s', $shipment->getOrder()->getId(), $shippingAddress->getCompany()));
 
             return;
         }
+
+        $parcelId = $pickupPointData[0];
+        $company = $pickupPointData[1];
 
         $data = [
             'shipping_code' => $configuration->getShippingCode(),
