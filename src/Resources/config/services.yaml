@@ -37,12 +37,6 @@ services:
     wishibam.mondial_relay.twig_extension:
         arguments:
             $configurationResolver: '@wishibam_mondial_relay.configuration_resolver'
-            $requestLocaleChecker: '@wishibam.mondial_relay.service.request_locale_checker'
         class: Wishibam\SyliusMondialRelayPlugin\Twig\MondialRelayExtension
         tags:
             - { name: twig.extension }
-
-    wishibam.mondial_relay.service.request_locale_checker:
-        class: Wishibam\SyliusMondialRelayPlugin\Service\RequestLocaleChecker
-        arguments:
-            $requestStack: '@request_stack'
