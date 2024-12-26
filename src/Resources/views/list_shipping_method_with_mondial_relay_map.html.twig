@@ -14,11 +14,9 @@
             {% set fee = form.method.vars.shipping_costs[choice_form.vars.value] %}
             {% set shippingMethod = form.method.vars.choices[key].data %}
 
-            {% if not (isMondialRelayShippingMethod(shippingMethod) and not isRequestLocaleAllowedForMondialRelay()) %}
-                {% include '@SyliusShop/Checkout/SelectShipping/_choice.html.twig' with {'form': choice_form, 'method': shippingMethod, 'fee': fee} %}
-            {% endif %}
+            {% include '@SyliusShop/Checkout/SelectShipping/_choice.html.twig' with {'form': choice_form, 'method': shippingMethod, 'fee': fee} %}
 
-            {% if isRequestLocaleAllowedForMondialRelay() and isMondialRelayShippingMethod(shippingMethod) and mondialRelayShippingMethod is null %} {# only the first method is supported #}
+            {% if isMondialRelayShippingMethod(shippingMethod) and mondialRelayShippingMethod is null %} {# only the first method is supported #}
                 {% set mondialRelayShippingMethod = shippingMethod %}
 
                 <div id="mondial-relay-map" style="display: none;"></div>
