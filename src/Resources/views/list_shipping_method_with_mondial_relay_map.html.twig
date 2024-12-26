@@ -1,4 +1,9 @@
 {% set mondialRelayShippingMethod = null %}
+{% if app.request.locale|replace({'_':'-'}) in (['fr-FR', 'es-ES', 'nl-NL', 'en-GB']) %}
+    {% set MrLocale = app.request.locale|replace({'_':'-'}) %}
+{% else %}
+    {% set MrLocale = null %}
+{% endif %}
 
 <div class="ui segment">
     <div class="ui dividing header">{{ 'sylius.ui.shipment'|trans }} #{{ loop.index }}</div>
@@ -150,6 +155,7 @@
                 PostCode: "{{ order.shippingAddress.postCode ?: '' }}",
                 City: "{{ order.shippingAddress.city ?: '' }}",
                 EnableGmap: "{{ configuration.isGoogleType() }}",
+                WidgetLanguage: "{{ MrLocale }}",
                 OnParcelShopSelected: (pointSelected) => {
                     const mondialRelayForm = shipmentFormName + '_mondialRelayParcelAddress';
                     const $addressForm = $('form[name="sylius_checkout_select_shipping"] #'+mondialRelayForm);
