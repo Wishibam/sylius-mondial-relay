@@ -42,19 +42,15 @@
 
     {{ form_widget(form.parcelPoint) }}
 
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script type="text/javascript" src="https://widget.mondialrelay.com/parcelshop-picker/jquery.plugin.mondialrelay.parcelshoppicker.js?{{ 'now'|date('U') }}"></script>
+
     {% if configuration.isGoogleType() %}
         <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key={{ configuration.googleApiKey }}"></script>
     {% endif %}
 
     <script>
-        {#
-            Dynamic loading of corresponding scripts, jQuery is already loadded most part of the time
-            therefore only mondial relay is load.
-        #}
-        const MONDIAL_RELAY_JQUERY_SCRIPT = 'https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js';
-        const MONDIAL_RELAY_MAP_SCRIPT = 'https://widget.mondialrelay.com/parcelshop-picker/jquery.plugin.mondialrelay.parcelshoppicker.js';
-
-        function showMondialRelayMap() {
+        $(document).ready(function () {
             const $map = $('#mondial-relay-map');
             const $checkboxEls = $('.checkbox').filter(el => {
                 const $radio = $(el).find('#sylius_checkout_select_shipping_shipments');
@@ -67,135 +63,108 @@
 
             const $submitField = $('#{{ form.parcelPoint.vars.id }}');
 
-            const getInputChecked = () => $('form[name="sylius_checkout_select_shipping"] .radio.checked').filter((idx, el) => $(el).hasClass('checked'));
-            const getParcelPointValue = () => $('#{{ form.parcelPoint.vars.id }}').val();
+            setTimeout(() => {
+                const getInputChecked = () => $('form[name="sylius_checkout_select_shipping"] .radio.checked').filter((idx, el) => $(el).hasClass('checked'));
+                const getParcelPointValue = () => $('#{{ form.parcelPoint.vars.id }}').val();
 
-            const isMondialRelaySelected = () => {
-                const $inputChecked = getInputChecked();
-                if ($inputChecked.length !== 1) {
-                    return false;
+                const isMondialRelaySelected = () => {
+                    const $inputChecked = getInputChecked();
+                    if ($inputChecked.length !== 1) {
+                        return false;
+                    }
+
+                    const $inputHtml = $inputChecked.find('input');
+                    return $inputHtml.length === 1 && $inputHtml[0].value === mondialRelayCode;
+                };
+
+                const displayMap = () => {
+                    $map.show();
+                    $map.trigger("MR_RebindMap"); // This re-draw the map
                 }
 
-                const $inputHtml = $inputChecked.find('input');
-                return $inputHtml.length === 1 && $inputHtml[0].value === mondialRelayCode;
-            };
+                const canSubmitShipping = () => {
+                    const $nextPageButton = $('#next-step');
+                    if (!isMondialRelaySelected()) {
+                        $nextPageButton.prop('disabled', false);
+                        return;
+                    }
 
-            const displayMap = () => {
-                $map.show();
-                $map.trigger("MR_RebindMap"); // This re-draw the map
-            }
+                    // A mondial relay parcel point must be picked in order to submit shipping selection
+                    $nextPageButton.prop('disabled', !getParcelPointValue());
+                };
 
-            const canSubmitShipping = () => {
-                const $nextPageButton = $('#next-step');
-                if (!isMondialRelaySelected()) {
-                    $nextPageButton.prop('disabled', false);
-                    return;
+                const initialInputChecked = $('form[name="sylius_checkout_select_shipping"] .radio input:checked');
+
+                if (initialInputChecked.length === 1 && initialInputChecked[0].value === mondialRelayCode) {
+                    displayMap();
+                    canSubmitShipping();
                 }
 
-                // A mondial relay parcel point must be picked in order to submit shipping selection
-                $nextPageButton.prop('disabled', !getParcelPointValue());
-            };
+                // This is fire when you click on the dot at left of the shipping method
+                $checkboxEls.checkbox({
+                    fireOnInit: true,
+                    onChecked: function() {
+                        if ($(this).val() === mondialRelayCode) {
+                            displayMap();
+                        } else {
+                            $submitField.val('');
+                            $map.hide();
+                        }
+                        canSubmitShipping();
+                    },
+                });
 
-            const initialInputChecked = $('form[name="sylius_checkout_select_shipping"] .radio input:checked');
+                // This is fire when you click on the label of the shipping method
+                // Due to semantic ui broken logic this don't fire the "onChecked" previous event
+                $('form[name="sylius_checkout_select_shipping"] .content a.header').click(function() {
+                    const $label = $(this);
+                    const $input = $label.closest('.item').find('input');
+                    const inputId = $input[0].id;
+                    const $items = $('.item .checkbox input');
+                    $items.each((index, item) => {
+                        item = $(item);
+                        if (item[0].id !== inputId) {
+                            item.parent().removeClass('checked');
+                        } else {
+                            item.parent().addClass('checked');
+                        }
+                    });
 
-            if (initialInputChecked.length === 1 && initialInputChecked[0].value === mondialRelayCode) {
-                displayMap();
-                canSubmitShipping();
-            }
-
-            // This is fire when you click on the dot at left of the shipping method
-            {# Notice: .checkbox() is part of semantic-ui #}
-            $checkboxEls.checkbox({
-                fireOnInit: true,
-                onChecked: function() {
-                    if ($(this).val() === mondialRelayCode) {
+                    // So there is some boiler code to ensure it also work when clicking on labels ...
+                    if (isMondialRelaySelected()) {
                         displayMap();
                     } else {
+                        $input.removeClass('checked');
                         $submitField.val('');
                         $map.hide();
                     }
-                    canSubmitShipping();
-                },
-            });
 
-            // This is fire when you click on the label of the shipping method
-            // Due to semantic ui broken logic this don't fire the "onChecked" previous event
-            $('form[name="sylius_checkout_select_shipping"] .content a.header').click(function() {
-                const $label = $(this);
-                const $input = $label.closest('.item').find('input');
-                const inputId = $input[0].id;
-                const $items = $('.item .checkbox input');
-                $items.each((index, item) => {
-                    item = $(item);
-                    if (item[0].id !== inputId) {
-                        item.parent().removeClass('checked');
-                    } else {
-                        item.parent().addClass('checked');
+                    canSubmitShipping();
+                });
+
+                $map.MR_ParcelShopPicker({
+                    Target: "#{{ form.parcelPoint.vars.id }}",
+                    Brand: "{{ configuration.mondialRelayCode }}",
+                    Country: "{{ configuration.language }}",
+                    Responsive: {{ configuration.responsive }},
+                    NbResults: {{ configuration.nbMapResults }},
+                    PostCode: "{{ order.shippingAddress.postCode ?: '' }}",
+                    City: "{{ order.shippingAddress.city ?: '' }}",
+                    EnableGmap: "{{ configuration.isGoogleType() }}",
+                    WidgetLanguage: "{{ MrLocale }}",
+                    OnParcelShopSelected: (pointSelected) => {
+                        const mondialRelayForm = shipmentFormName + '_mondialRelayParcelAddress';
+                        const $addressForm = $('form[name="sylius_checkout_select_shipping"] #'+mondialRelayForm);
+
+                        $addressForm.find(`#${mondialRelayForm}_street`).val(pointSelected.Adresse1);
+                        $addressForm.find(`#${mondialRelayForm}_postcode`).val(pointSelected.CP);
+                        $addressForm.find(`#${mondialRelayForm}_company`).val(pointSelected.Nom);
+                        $addressForm.find(`#${mondialRelayForm}_city`).val(pointSelected.Ville);
+
+                        canSubmitShipping();
                     }
                 });
-
-                // So there is some boiler code to ensure it also work when clicking on labels ...
-                if (isMondialRelaySelected()) {
-                    displayMap();
-                } else {
-                    $input.removeClass('checked');
-                    $submitField.val('');
-                    $map.hide();
-                }
-
-                canSubmitShipping();
-            });
-
-            $map.MR_ParcelShopPicker({
-                Target: "#{{ form.parcelPoint.vars.id }}",
-                Brand: "{{ configuration.mondialRelayCode }}",
-                Country: "{{ configuration.language }}",
-                Responsive: {{ configuration.responsive }},
-                NbResults: {{ configuration.nbMapResults }},
-                PostCode: "{{ order.shippingAddress.postCode ?: '' }}",
-                City: "{{ order.shippingAddress.city ?: '' }}",
-                EnableGmap: "{{ configuration.isGoogleType() }}",
-                WidgetLanguage: "{{ MrLocale }}",
-                OnParcelShopSelected: (pointSelected) => {
-                    const mondialRelayForm = shipmentFormName + '_mondialRelayParcelAddress';
-                    const $addressForm = $('form[name="sylius_checkout_select_shipping"] #'+mondialRelayForm);
-
-                    $addressForm.find(`#${mondialRelayForm}_street`).val(pointSelected.Adresse1);
-                    $addressForm.find(`#${mondialRelayForm}_postcode`).val(pointSelected.CP);
-                    $addressForm.find(`#${mondialRelayForm}_company`).val(pointSelected.Nom);
-                    $addressForm.find(`#${mondialRelayForm}_city`).val(pointSelected.Ville);
-
-                    canSubmitShipping();
-                }
-            });
-        }
-
-        function loadMondialRelay() {
-            const mondialRelayScript = document.createElement("script");
-            mondialRelayScript.setAttribute("src", MONDIAL_RELAY_MAP_SCRIPT);
-            mondialRelayScript.addEventListener("load", () => {
-                showMondialRelayMap();
-            });
-            document.head.appendChild(mondialRelayScript);
-        }
-
-        document.addEventListener("DOMContentLoaded",function () {
-            if (typeof $ === 'undefined') {
-                {#
-                    Side note: loading jQuery here may lead to an issue bellow because we use the API of
-                    semantic-ui... (`.checkbox()`)
-                    A fix could be to use the standard events on checkboxes. Not changing it right now to ensure
-                    compatibility with existing code.
-                #}
-                const jqueryScript = document.createElement("script");
-                jqueryScript.setAttribute("src", MONDIAL_RELAY_JQUERY_SCRIPT);
-                jqueryScript.addEventListener("load", () => {
-                    loadMondialRelay();
-                });
-                document.head.appendChild(jqueryScript);
-            } else {
-                loadMondialRelay();
-            }
+            }, 200);
         });
     </script>
 {% endif %}
