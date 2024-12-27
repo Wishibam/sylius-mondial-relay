@@ -32,6 +32,6 @@ final class RequestLocaleChecker implements RequestLocaleCheckerInterface
             return false;
         }
 
-        return in_array($request->getPreferredLanguage(), self::ALLOWED_LOCALES, true);
+        return in_array($request->getLocale(), self::ALLOWED_LOCALES, true);
     }
 }
