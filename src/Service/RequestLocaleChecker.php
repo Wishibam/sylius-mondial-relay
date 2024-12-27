@@ -12,6 +12,9 @@ final class RequestLocaleChecker implements RequestLocaleCheckerInterface
     private const ALLOWED_LOCALES = [
         'fr',
         'fr_FR',
+        'en_GB',
+        'es_ES',
+        'nl_NL',
     ];
 
     private RequestStack $requestStack;
