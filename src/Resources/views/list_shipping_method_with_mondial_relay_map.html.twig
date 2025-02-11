@@ -5,6 +5,8 @@
     {% set MrLocale = null %}
 {% endif %}
 
+{% set mondialRelayShippingMethods = [] %}
+
 <div class="ui segment">
     <div class="ui dividing header">{{ 'sylius.ui.shipment'|trans }} #{{ loop.index }}</div>
     <div class="ui fluid stackable items" {{ sylius_test_html_attribute('shipments') }}>
@@ -18,153 +20,190 @@
                 {% include '@SyliusShop/Checkout/SelectShipping/_choice.html.twig' with {'form': choice_form, 'method': shippingMethod, 'fee': fee} %}
             {% endif %}
 
-            {% if isRequestLocaleAllowedForMondialRelay() and isMondialRelayShippingMethod(shippingMethod) and mondialRelayShippingMethod is null %} {# only the first method is supported #}
-                {% set mondialRelayShippingMethod = shippingMethod %}
-
-                <div id="mondial-relay-map" style="display: none;"></div>
+            {% if isRequestLocaleAllowedForMondialRelay() and isMondialRelayShippingMethod(shippingMethod) %}
+                {% set mondialRelayShippingMethods = mondialRelayShippingMethods|merge({ (shippingMethod.code) : shippingMethod }) %}
+                <div class="mondial-relay-map" style="display: none;" data-mondial-relay-code="{{ shippingMethod.code }}"></div>
             {% endif %}
         {% else %}
             {% include '@SyliusShop/Checkout/SelectShipping/_unavailable.html.twig' %}
         {% endfor %}
 
-        {% if mondialRelayShippingMethod is not null %}
-            {{ form_row(form.mondialRelayParcelAddress, {
-                attr: {
-                    style: "display:none"
-                }
-            }) }}
+        {% if mondialRelayShippingMethods[key]|default() is not null %}
+            {{ form_row(form.mondialRelayParcelAddress, { attr: { style: "display:none" } }) }}
         {% endif %}
     </div>
 </div>
 
-{% if mondialRelayShippingMethod is not null %}
-    {% set configuration = getMondialRelayConfiguration(mondialRelayShippingMethod) %}
+{% if mondialRelayShippingMethods is not empty %}
 
     {{ form_widget(form.parcelPoint) }}
 
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script type="text/javascript" src="https://widget.mondialrelay.com/parcelshop-picker/jquery.plugin.mondialrelay.parcelshoppicker.js?{{ 'now'|date('U') }}"></script>
 
-    {% if configuration.isGoogleType() %}
-        <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key={{ configuration.googleApiKey }}"></script>
-    {% endif %}
+    {% set googleMapAlreadyAdded = false %}
+    {% for key, method in mondialRelayShippingMethods %}
+        {% set configuration = getMondialRelayConfiguration(method) %}
+
+        {% set mapConfig = {
+        'formAddressIdPrefix': form.vars.id ~ '_mondialRelayParcelAddress',
+        'Target': '#' ~ form.parcelPoint.vars.id,
+        'Brand': configuration.mondialRelayCode,
+        'Country': configuration.language,
+        'Responsive': configuration.responsive,
+        'NbResults': configuration.nbMapResults,
+        'PostCode': order.shippingAddress.postCode ?: '',
+        'City': order.shippingAddress.city ?: '',
+        'EnableGmap': configuration.isGoogleType(),
+        'WidgetLanguage': MrLocale,
+        } %}
+
+        <div id="config-{{ method.code }}" data-config-value="{{ mapConfig|json_encode }}"></div>
+
+        {% if configuration.isGoogleType() and not googleMapAlreadyAdded %}
+            {# Adding Gmap api multiple times could cause issues #}
+            {% set googleMapAlreadyAdded = true %}
+            <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key={{ configuration.googleApiKey }}"></script>
+        {% endif %}
+    {% endfor %}
 
     <script>
-        $(document).ready(function () {
-            const $map = $('#mondial-relay-map');
-            const $checkboxEls = $('.checkbox').filter(el => {
-                const $radio = $(el).find('#sylius_checkout_select_shipping_shipments');
+        class WidgetManager {
+            constructor() {
+                this.widgets = new Map();
+                this.checkboxEls = [];
+            }
 
-                return !!$radio;
-            });
+            init() {
+                this.checkboxEls = document.querySelectorAll("#sylius-shipping-methods input[type='radio']");
 
-            const shipmentFormName = "{{ form.vars.id }}";
-            const mondialRelayCode = "{{ mondialRelayShippingMethod.code }}";
+                document.querySelectorAll('.mondial-relay-map').forEach((mapElement) => {
+                    const mondialRelayCode = mapElement.dataset.mondialRelayCode;
 
-            const $submitField = $('#{{ form.parcelPoint.vars.id }}');
-
-            setTimeout(() => {
-                const getInputChecked = () => $('form[name="sylius_checkout_select_shipping"] .radio.checked').filter((idx, el) => $(el).hasClass('checked'));
-                const getParcelPointValue = () => $('#{{ form.parcelPoint.vars.id }}').val();
-
-                const isMondialRelaySelected = () => {
-                    const $inputChecked = getInputChecked();
-                    if ($inputChecked.length !== 1) {
-                        return false;
-                    }
-
-                    const $inputHtml = $inputChecked.find('input');
-                    return $inputHtml.length === 1 && $inputHtml[0].value === mondialRelayCode;
-                };
-
-                const displayMap = () => {
-                    $map.show();
-                    $map.trigger("MR_RebindMap"); // This re-draw the map
-                }
-
-                const canSubmitShipping = () => {
-                    const $nextPageButton = $('#next-step');
-                    if (!isMondialRelaySelected()) {
-                        $nextPageButton.prop('disabled', false);
-                        return;
-                    }
-
-                    // A mondial relay parcel point must be picked in order to submit shipping selection
-                    $nextPageButton.prop('disabled', !getParcelPointValue());
-                };
-
-                const initialInputChecked = $('form[name="sylius_checkout_select_shipping"] .radio input:checked');
-
-                if (initialInputChecked.length === 1 && initialInputChecked[0].value === mondialRelayCode) {
-                    displayMap();
-                    canSubmitShipping();
-                }
-
-                // This is fire when you click on the dot at left of the shipping method
-                $checkboxEls.checkbox({
-                    fireOnInit: true,
-                    onChecked: function() {
-                        if ($(this).val() === mondialRelayCode) {
-                            displayMap();
-                        } else {
-                            $submitField.val('');
-                            $map.hide();
-                        }
-                        canSubmitShipping();
-                    },
+                    const widget = new WidgetMap(mapElement);
+                    widget.init();
+                    widget.processInitialInput();
+                    this.widgets.set(mondialRelayCode, widget);
                 });
 
-                // This is fire when you click on the label of the shipping method
-                // Due to semantic ui broken logic this don't fire the "onChecked" previous event
-                $('form[name="sylius_checkout_select_shipping"] .content a.header').click(function() {
-                    const $label = $(this);
-                    const $input = $label.closest('.item').find('input');
-                    const inputId = $input[0].id;
-                    const $items = $('.item .checkbox input');
-                    $items.each((index, item) => {
-                        item = $(item);
-                        if (item[0].id !== inputId) {
-                            item.parent().removeClass('checked');
-                        } else {
-                            item.parent().addClass('checked');
+                this.initListeners();
+            }
+
+            initListeners() {
+                this.checkboxEls.forEach((checkbox) => {
+                    checkbox.addEventListener('change', (event) => {
+                        this.hideWidgets();
+
+                        if (event.target.checked === false) {
+                            return;
+                        }
+
+                        const widget = this.widgets.get(checkbox.value);
+                        if (widget === undefined) {
+                            return;
+                        }
+
+                        widget.displayMap();
+                        widget.canSubmitShipping();
+                    });
+                });
+            }
+
+            // Hide all widgets
+            hideWidgets() {
+                this.widgets.forEach((widget) => {
+                    widget.hideMap();
+                    widget.canSubmitShipping();
+                });
+            }
+        }
+
+        class WidgetMap {
+            constructor(mapDiv) {
+                this.$map = $(mapDiv);
+
+                this.mondialRelayCode = this.$map.data('mondialRelayCode');
+                this.config = JSON.parse(document.querySelector(`#config-${this.mondialRelayCode}`).dataset.configValue);
+                this.submitField = document.querySelector(this.config.Target);
+                this.checkboxEl = document.querySelector(`.checkbox [value='${this.mondialRelayCode}']`);
+            }
+
+            hideMap() {
+                this.submitField.value = '';
+                this.$map.hide();
+            }
+
+            displayMap() {
+                this.$map.show();
+                this.$map.trigger("MR_RebindMap"); // This re-draw the map
+            }
+
+            canSubmitShipping() {
+                const nextPageButton = document.querySelector('#next-step');
+                if (!this.isMondialRelaySelected()) {
+                    nextPageButton.disabled =  false;
+                    return;
+                }
+
+                // A mondial relay parcel point must be picked in order to submit shipping selection
+                nextPageButton.disabled = !this.getParcelPointValue();
+            }
+
+            isMondialRelaySelected() {
+                const inputChecked = this.getInputChecked();
+                if (inputChecked === null) {
+                    return false;
+                }
+
+                return inputChecked.value === this.mondialRelayCode;
+            }
+
+            getInputChecked() {
+                return document.querySelector('form[name=sylius_checkout_select_shipping] .radio :checked');
+            }
+
+            processInitialInput() {
+                if (this.isMondialRelaySelected()) {
+                    this.displayMap();
+                    this.canSubmitShipping();
+                }
+            }
+
+            getParcelPointValue() {
+                return document.querySelector(this.config.Target).value;
+            }
+
+            init() {
+                setTimeout(() => {
+                    this.$map.MR_ParcelShopPicker({
+                        Target: this.config.Target,
+                        Brand: this.config.Brand,
+                        Country: this.config.Country,
+                        Responsive: this.config.Responsive,
+                        NbResults: this.config.NbResults,
+                        PostCode: this.config.PostCode,
+                        City: this.config.City,
+                        EnableGmap: this.config.EnableGmap,
+                        WidgetLanguage: this.config.WidgetLanguage,
+                        OnParcelShopSelected: (pointSelected) => {
+                            const mondialRelayForm = this.config.formAddressIdPrefix;
+                            const $addressForm = $('form[name="sylius_checkout_select_shipping"] #' + mondialRelayForm);
+
+                            $addressForm.find(`#${mondialRelayForm}_street`).val(pointSelected.Adresse1);
+                            $addressForm.find(`#${mondialRelayForm}_postcode`).val(pointSelected.CP);
+                            $addressForm.find(`#${mondialRelayForm}_company`).val(pointSelected.Nom);
+                            $addressForm.find(`#${mondialRelayForm}_city`).val(pointSelected.Ville);
+
+                            this.canSubmitShipping();
                         }
                     });
+                }, 200);
+            }
+        }
 
-                    // So there is some boiler code to ensure it also work when clicking on labels ...
-                    if (isMondialRelaySelected()) {
-                        displayMap();
-                    } else {
-                        $input.removeClass('checked');
-                        $submitField.val('');
-                        $map.hide();
-                    }
-
-                    canSubmitShipping();
-                });
-
-                $map.MR_ParcelShopPicker({
-                    Target: "#{{ form.parcelPoint.vars.id }}",
-                    Brand: "{{ configuration.mondialRelayCode }}",
-                    Country: "{{ configuration.language }}",
-                    Responsive: {{ configuration.responsive }},
-                    NbResults: {{ configuration.nbMapResults }},
-                    PostCode: "{{ order.shippingAddress.postCode ?: '' }}",
-                    City: "{{ order.shippingAddress.city ?: '' }}",
-                    EnableGmap: "{{ configuration.isGoogleType() }}",
-                    WidgetLanguage: "{{ MrLocale }}",
-                    OnParcelShopSelected: (pointSelected) => {
-                        const mondialRelayForm = shipmentFormName + '_mondialRelayParcelAddress';
-                        const $addressForm = $('form[name="sylius_checkout_select_shipping"] #'+mondialRelayForm);
-
-                        $addressForm.find(`#${mondialRelayForm}_street`).val(pointSelected.Adresse1);
-                        $addressForm.find(`#${mondialRelayForm}_postcode`).val(pointSelected.CP);
-                        $addressForm.find(`#${mondialRelayForm}_company`).val(pointSelected.Nom);
-                        $addressForm.find(`#${mondialRelayForm}_city`).val(pointSelected.Ville);
-
-                        canSubmitShipping();
-                    }
-                });
-            }, 200);
+        $(document).ready(function () {
+            const widgetManager = new WidgetManager();
+            widgetManager.init();
         });
     </script>
 {% endif %}
