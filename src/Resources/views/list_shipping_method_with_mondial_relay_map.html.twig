@@ -1,11 +1,9 @@
-{% set mondialRelayShippingMethod = null %}
+{% set mondialRelayShippingMethods = [] %}
 {% if app.request.locale|replace({'_':'-'}) in (['fr-FR', 'es-ES', 'nl-NL', 'en-GB']) %}
     {% set MrLocale = app.request.locale|replace({'_':'-'}) %}
 {% else %}
     {% set MrLocale = null %}
 {% endif %}
-
-{% set mondialRelayShippingMethods = [] %}
 
 <div class="ui segment">
     <div class="ui dividing header">{{ 'sylius.ui.shipment'|trans }} #{{ loop.index }}</div>
@@ -28,7 +26,7 @@
             {% include '@SyliusShop/Checkout/SelectShipping/_unavailable.html.twig' %}
         {% endfor %}
 
-        {% if mondialRelayShippingMethods[key]|default() is not null %}
+        {% if mondialRelayShippingMethods[key]|default(null) is not null %}
             {{ form_row(form.mondialRelayParcelAddress, { attr: { style: "display:none" } }) }}
         {% endif %}
     </div>
