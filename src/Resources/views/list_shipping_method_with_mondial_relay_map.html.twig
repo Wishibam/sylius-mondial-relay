@@ -43,7 +43,6 @@
     {{ form_widget(form.parcelPoint) }}
 
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script type="text/javascript" src="https://widget.mondialrelay.com/parcelshop-picker/jquery.plugin.mondialrelay.parcelshoppicker.js?{{ 'now'|date('U') }}"></script>
 
     {% if configuration.isGoogleType() %}
         <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key={{ configuration.googleApiKey }}"></script>
@@ -63,7 +62,8 @@
 
             const $submitField = $('#{{ form.parcelPoint.vars.id }}');
 
-            setTimeout(() => {
+        $.getScript("https://widget.mondialrelay.com/parcelshop-picker/jquery.plugin.mondialrelay.parcelshoppicker.js?{{ 'now'|date('U') }}")
+            .done(() => {
                 const getInputChecked = () => $('form[name="sylius_checkout_select_shipping"] .radio.checked').filter((idx, el) => $(el).hasClass('checked'));
                 const getParcelPointValue = () => $('#{{ form.parcelPoint.vars.id }}').val();
 
@@ -164,7 +164,7 @@
                         canSubmitShipping();
                     }
                 });
-            }, 200);
+            });
         });
     </script>
 {% endif %}
