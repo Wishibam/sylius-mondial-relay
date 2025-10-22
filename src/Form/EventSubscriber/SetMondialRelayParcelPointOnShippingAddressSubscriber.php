@@ -10,6 +10,7 @@ use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
+use Wishibam\SyliusMondialRelayPlugin\Entity\WhishibamMondialRelayShipmentInterface;
 use Wishibam\SyliusMondialRelayPlugin\Event\ResetAddressToPreviousAddress;
 use Wishibam\SyliusMondialRelayPlugin\Event\SetMondialRelayInAddress;
 use Wishibam\SyliusMondialRelayPlugin\Form\Extension\ShippingMethodChoiceTypeExtension;
@@ -41,10 +42,17 @@ class SetMondialRelayParcelPointOnShippingAddressSubscriber implements EventSubs
         $form = $event->getForm();
 
         /** @var Address $originalShippingAddress */
-        $originalShippingAddress = $shipment->getOrder()->getShippingAddress();
+        $originalShippingAddress = $shipment->getSelfShippingAddress();
+
+        if (null === $originalShippingAddress) {
+            /** @var Address $orderShippingAddress */
+            $orderShippingAddress = $shipment->getOrder()->getShippingAddress();
+            $originalShippingAddress = clone $orderShippingAddress;
+            $shipment->setShippingAddress($originalShippingAddress);
+        }
 
         if (
-            !$shipment instanceof ShipmentInterface ||
+            !$shipment instanceof WhishibamMondialRelayShipmentInterface ||
             null === $shipment->getMethod() ||
             null === $shipment->getOrder() ||
             !isset($shipment->getMethod()->getConfiguration()[ShippingMethodTypeExtension::CONFIGURATION_KEY])
